@@ -22,7 +22,7 @@ import { decodeJWT, extractAccountId, extractProfile } from "./lib/jwt.js";
 import {
 	printHelp, printHelpCodex, printHelpClaude, printHelpFactory, printHelpFactoryQuota,
 	printHelpGrok, printHelpGrokQuota,
-	printHelpSynthetic, printHelpSyntheticQuota,
+	printHelpSynthetic, printHelpSyntheticQuota, printHelpSyntheticRemove,
 	printHelpAntigravity, printHelpAntigravityQuota,
 	printHelpOpenCodeGo, printHelpOpenCodeGoQuota,
 	printHelpAdd, printHelpCodexReauth, printHelpSwitch, printHelpCodexSync,
@@ -184,6 +184,8 @@ async function main() {
 	if (namespace === "synthetic") {
 		switch (subcommand) {
 			case "quota": printHelpSyntheticQuota(); break;
+			case "remove":
+			case "disable": printHelpSyntheticRemove(); break;
 			default: printHelpSynthetic(); break;
 		}
 		return;
@@ -395,6 +397,7 @@ export {
 	formatGrokPeriodReset,
 	printHelpSynthetic,
 	printHelpSyntheticQuota,
+	printHelpSyntheticRemove,
 	buildSyntheticUsageLines,
 	formatSyntheticReset,
 	printHelpAntigravity,
@@ -434,6 +437,8 @@ export {
 	handleGrokQuota,
 	handleSynthetic,
 	handleSyntheticQuota,
+	handleSyntheticList,
+	handleSyntheticRemove,
 	handleAntigravity,
 	handleAntigravityQuota,
 	handleOpenCodeGo,
@@ -577,6 +582,9 @@ export {
 	loadSyntheticAccountsFromIntegrationDb,
 	loadAllSyntheticAccounts,
 	getSyntheticSearchLocations,
+	isSyntheticEnvSource,
+	resolveSyntheticIntegrationDbPath,
+	removeSyntheticAccountFromIntegrationDb,
 } from "./lib/synthetic-accounts.js";
 export { normalizeSyntheticQuotas, fetchSyntheticUsage } from "./lib/synthetic-usage.js";
 

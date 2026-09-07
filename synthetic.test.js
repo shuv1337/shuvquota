@@ -14,11 +14,17 @@ import {
 	loadSyntheticAccountsFromEnv,
 	loadSyntheticAccountsFromIntegrationDb,
 	loadAllSyntheticAccounts,
+	isSyntheticEnvSource,
+	removeSyntheticAccountFromIntegrationDb,
 	normalizeSyntheticQuotas,
 	fetchSyntheticUsage,
 	buildSyntheticUsageLines,
 	printHelp,
 	printHelpSynthetic,
+	printHelpSyntheticRemove,
+	handleSynthetic,
+	handleSyntheticList,
+	handleSyntheticRemove,
 } from "./shuvquota.js";
 
 const QUOTAS = {
@@ -196,5 +202,179 @@ describe("Synthetic display and help", () => {
 		}
 		expect(output.join("\n")).toContain("synthetic");
 		expect(output.join("\n")).toContain("SYNTHETIC_API_KEY");
+		expect(output.join("\n")).toContain("remove");
+		expect(output.join("\n")).toContain("disable");
+	});
+
+	test("remove help documents the disable alias", () => {
+		const output = [];
+		const originalLog = console.log;
+		console.log = value => output.push(value);
+		try {
+			printHelpSyntheticRemove();
+		} finally {
+			console.log = originalLog;
+		}
+		const text = output.join("\n");
+		expect(text).toContain("synthetic remove");
+		expect(text).toContain("disable");
+		expect(text).not.toContain("apiKey");
+	});
+});
+
+describe("Synthetic list and remove", () => {
+	const dbPath = join(tmpdir(), `shuvquota-synthetic-remove-${process.pid}.db`);
+	let originalApiKey;
+	let originalAccounts;
+	let originalLabel;
+	let originalConsoleLog;
+	let originalConsoleError;
+	let originalProcessExit;
+	let consoleOutput;
+	let consoleErrors;
+	let exitCode;
+
+	beforeEach(() => {
+		originalApiKey = process.env.SYNTHETIC_API_KEY;
+		originalAccounts = process.env.SYNTHETIC_ACCOUNTS;
+		originalLabel = process.env.SYNTHETIC_LABEL;
+		delete process.env.SYNTHETIC_API_KEY;
+		delete process.env.SYNTHETIC_ACCOUNTS;
+		delete process.env.SYNTHETIC_LABEL;
+		writeFileSync(dbPath, "placeholder");
+
+		originalConsoleLog = console.log;
+		originalConsoleError = console.error;
+		consoleOutput = [];
+		consoleErrors = [];
+		console.log = (...args) => { consoleOutput.push(args.join(" ")); };
+		console.error = (...args) => { consoleErrors.push(args.join(" ")); };
+
+		originalProcessExit = process.exit;
+		exitCode = null;
+		process.exit = code => {
+			exitCode = code;
+			throw new Error(`EXIT_${code}`);
+		};
+	});
+
+	afterEach(() => {
+		if (originalApiKey === undefined) delete process.env.SYNTHETIC_API_KEY;
+		else process.env.SYNTHETIC_API_KEY = originalApiKey;
+		if (originalAccounts === undefined) delete process.env.SYNTHETIC_ACCOUNTS;
+		else process.env.SYNTHETIC_ACCOUNTS = originalAccounts;
+		if (originalLabel === undefined) delete process.env.SYNTHETIC_LABEL;
+		else process.env.SYNTHETIC_LABEL = originalLabel;
+		console.log = originalConsoleLog;
+		console.error = originalConsoleError;
+		process.exit = originalProcessExit;
+		rmSync(dbPath, { force: true });
+	});
+
+	function createFakeDatabase(rows) {
+		const sql = [];
+		class FakeDatabase {
+			prepare(query) {
+				sql.push(query);
+				return {
+					all: () => rows,
+					run: id => {
+						const before = rows.length;
+						const remaining = rows.filter(row => row.id !== id);
+						rows.length = 0;
+						rows.push(...remaining);
+						return { changes: before - remaining.length };
+					},
+				};
+			}
+			close() {}
+		}
+		return { FakeDatabase, sql, rows };
+	}
+
+	test("isSyntheticEnvSource detects env-backed accounts", () => {
+		expect(isSyntheticEnvSource("env:SYNTHETIC_API_KEY")).toBe(true);
+		expect(isSyntheticEnvSource("/tmp/opencode-integration-v2.db")).toBe(false);
+	});
+
+	test("list JSON includes source and omits the API key", async () => {
+		const { FakeDatabase } = createFakeDatabase([
+			{ id: "cred-1", label: "default", value: '{"key":"sk-secret-key"}' },
+		]);
+		await handleSyntheticList([], {
+			json: true,
+			_dbPath: dbPath,
+			_DatabaseSync: FakeDatabase,
+		});
+		const parsed = JSON.parse(consoleOutput.join("\n"));
+		expect(parsed.accounts).toEqual([{
+			label: "default",
+			source: dbPath,
+			credentialId: "cred-1",
+		}]);
+		expect(JSON.stringify(parsed)).not.toContain("sk-secret-key");
+		expect(JSON.stringify(parsed)).not.toContain("apiKey");
+	});
+
+	test("remove refuses env-only accounts", async () => {
+		process.env.SYNTHETIC_API_KEY = "env-secret-key";
+		process.env.SYNTHETIC_LABEL = "from-env";
+		const { FakeDatabase } = createFakeDatabase([]);
+		try {
+			await handleSyntheticRemove(["from-env"], {
+				json: true,
+				_dbPath: dbPath,
+				_DatabaseSync: FakeDatabase,
+			});
+		} catch (error) {
+			expect(error.message).toBe("EXIT_1");
+		}
+		expect(exitCode).toBe(1);
+		const parsed = JSON.parse(consoleOutput.join("\n"));
+		expect(parsed.success).toBe(false);
+		expect(parsed.error).toContain("SYNTHETIC_API_KEY");
+		expect(JSON.stringify(parsed)).not.toContain("env-secret-key");
+	});
+
+	test("remove deletes only the matching synthetic SQLite credential", async () => {
+		const rows = [
+			{ id: "cred-keep", label: "other", value: '{"key":"keep-key"}' },
+			{ id: "cred-dead", label: "default", value: '{"key":"dead-secret-key"}' },
+		];
+		const { FakeDatabase, sql } = createFakeDatabase(rows);
+		await handleSyntheticRemove(["default"], {
+			json: true,
+			_dbPath: dbPath,
+			_DatabaseSync: FakeDatabase,
+		});
+		const parsed = JSON.parse(consoleOutput.join("\n"));
+		expect(parsed.success).toBe(true);
+		expect(parsed.label).toBe("default");
+		expect(parsed.credentialId).toBe("cred-dead");
+		expect(rows.map(row => row.id)).toEqual(["cred-keep"]);
+		expect(sql.some(query => query.includes("integration_id = 'synthetic'"))).toBe(true);
+		expect(sql.some(query => /vacuum/i.test(query))).toBe(false);
+		expect(JSON.stringify(parsed)).not.toContain("dead-secret-key");
+	});
+
+	test("disable is routed as remove", async () => {
+		const rows = [
+			{ id: "cred-dead", label: "default", value: '{"key":"dead-secret-key"}' },
+		];
+		const { FakeDatabase } = createFakeDatabase(rows);
+		await handleSynthetic(["disable", "default"], {
+			json: true,
+			_dbPath: dbPath,
+			_DatabaseSync: FakeDatabase,
+		});
+		const parsed = JSON.parse(consoleOutput.join("\n"));
+		expect(parsed.success).toBe(true);
+		expect(rows).toEqual([]);
+	});
+
+	test("removeSyntheticAccountFromIntegrationDb rejects missing ids", async () => {
+		const result = await removeSyntheticAccountFromIntegrationDb("", { dbPath });
+		expect(result.ok).toBe(false);
+		expect(result.error).toContain("Missing credential id");
 	});
 });

@@ -61,11 +61,13 @@ shuvquota claude sync --dry-run
 shuvquota codex list
 shuvquota claude list
 shuvquota factory list
+shuvquota synthetic list
 
 # Remove an account
 shuvquota codex remove old-account
 shuvquota claude remove old-account
 shuvquota factory remove old-account
+shuvquota synthetic remove default
 ```
 
 ## shuvquota PWA
@@ -146,6 +148,16 @@ The API key is discovered from `SYNTHETIC_API_KEY`, `SYNTHETIC_ACCOUNTS`, or the
 Synthetic credential in shuvcode's integration-v2 database. SQLite discovery uses
 the built-in `node:sqlite` module when available; older Node versions can use an
 environment variable instead.
+
+```bash
+shuvquota synthetic list
+shuvquota synthetic remove default
+shuvquota synthetic disable default --json
+```
+
+`remove` (and the `disable` alias) deletes the matching shuvcode integration-v2
+credential. Environment-only keys cannot be removed from the CLI; edit the env
+var instead.
 
 ### antigravity quota
 

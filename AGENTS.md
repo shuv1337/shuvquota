@@ -335,6 +335,8 @@ As of latest: **686 tests** across the repository test files. All tests must pas
 - Credentials are read from `SYNTHETIC_API_KEY`, `SYNTHETIC_ACCOUNTS`, or the shuvcode integration-v2 SQLite database.
 - The SQLite reader dynamically imports `node:sqlite`; Node versions without it skip that optional source.
 - Quota endpoint: `https://api.synthetic.new/v2/quotas` (rolling 5-hour, weekly credits, subscription requests, and hourly search).
+- `cq synthetic list` shows labels and sources, never the API key.
+- `cq synthetic remove <label>` (alias: `disable`) deletes the matching integration-v2 credential (`DELETE ... WHERE id = ? AND integration_id = 'synthetic'`). Env-only accounts cannot be removed via CLI.
 
 ### Google AI Pro / Antigravity notes
 
