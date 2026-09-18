@@ -370,20 +370,30 @@ Each phase ends with `bun test` green, smoke checks, and one commit. Phase 1 is 
 Phase 2 is a behavior-changing credential-boundary migration and must add tests alongside
 each removal.
 
+Execution deviation: Phase1 landed independently. Phases2–7 were integrated in
+parallel and are committed together after the complete test suite passes, avoiding
+broken intermediate CLI/provider/schema commits. The original checklist remains
+here as an audit trail rather than deleting the user's plan after completion.
+
 ### Phase 0 — Baseline and guardrails
 - [x] Tag current `main` as `v1.1.25-final`; note in README that v1 is `npx shuvquota@1`.
       Actual trunk is `master`; local tag points at `59089120`.
 - [ ] Capture `cq --json --local` and `cq --json --native` output for every provider you
       have credentials for, redacted, into `/tmp/` as a manual regression reference
       (not committed).
-- [ ] Verify and document a direct installed-app OAuth flow for Codex, Claude, Grok, and
+      Deferred intentionally: the v1 quota path mutates live harness credentials.
+      Fixture regressions and isolated-home smoke checks replace this unsafe capture.
+- [x] Verify and document a direct installed-app OAuth flow for Codex, Claude, Grok, and
       Antigravity: authorization/token endpoints, redirect method, scopes, client
       configuration, refresh rotation, and provider-policy constraints. Stop before Phase
       2 if any provider cannot issue an independent shuvquota-owned session.
+      Source/protocol feasibility and mocked flows verified in `docs/v2-oauth.md`;
+      live browser enrollment remains unperformed.
 - [x] Record smoke checklist: `--version`, `--help`, `cq`, `cq --json`, `cq --compact`,
       `cq claude`, `bun run app` + `curl /api/quota`.
       Recorded in `docs/v2-validation.md`; recording is distinct from passing all gates.
-- [ ] Commit: `chore: tag v1 baseline and record v2 smoke checklist`
+- [x] Commit: `chore: tag v1 baseline and record v2 smoke checklist`
+      Recorded as `a00834b2` with the plan review and baseline evidence.
 
 ### Phase 1 — Remove second-class providers
 - [x] Delete `lib/factory-*.js`, `lib/opencode-go-usage.js`,
@@ -397,106 +407,117 @@ each removal.
       `normalizeOpenCodeGoAccount` and `normalizeSyntheticAccount`; web: remove provider
       branches and icons.
 - [x] README/AGENTS.md: remove sections. Delete `.factory/`.
-- [ ] Commit: `feat!: drop Factory and OpenCode Go providers`
+- [x] Commit: `feat!: drop Factory and OpenCode Go providers`
+      Landed as `db07f261` (`feat!: drop Factory, OpenCode Go, and Synthetic providers`).
 
 ### Phase 2 — Establish shuvquota-owned credential management
-- [ ] Keep `lib/oauth.js`, `lib/claude-oauth.js`, and the prompt/browser helpers. Extract
+- [x] Keep `lib/oauth.js`, `lib/claude-oauth.js`, and the prompt/browser helpers. Extract
       reusable PKCE, callback, manual-code, timeout, and headless behavior rather than
       deleting their tests.
-- [ ] Delete `lib/sync.js` and all `switch`/`sync` handlers that write credentials or an
+- [x] Delete `lib/sync.js` and all `switch`/`sync` handlers that write credentials or an
       active identity into Codex, Claude Code, OpenCode, pi, or Hermes stores.
-- [ ] Explicitly remove `maybeImportClaudeOauthStores`; quota display must never prompt or
+- [x] Explicitly remove `maybeImportClaudeOauthStores`; quota display must never prompt or
       import harness credentials as a side effect.
-- [ ] Create `lib/credential-store.js` for shuvquota-owned containers: atomic add,
+- [x] Create `lib/credential-store.js` for shuvquota-owned containers: atomic add,
       replace-on-reauth, rename, remove, list, and token-refresh updates. Preserve unknown
       root fields and file mode 0600; never expose a harness-auth write function.
-- [ ] Keep and simplify provider commands `add`, `reauth`, `rename`, and `remove` for
+- [x] Keep and simplify provider commands `add`, `reauth`, `rename`, and `remove` for
       Codex and Claude. Add the same managed-account contract for Grok and Antigravity.
-- [ ] Add direct OAuth login adapters for Grok and Antigravity. Document required OAuth
+- [x] Add direct OAuth login adapters for Grok and Antigravity. Document required OAuth
       client configuration without committing client secrets.
-- [ ] Remove `--local/--native` and divergence checks. Managed accounts are authoritative;
+- [x] Remove `--local/--native` and divergence checks. Managed accounts are authoritative;
       external harness stores are read-only discovery/fallback sources and are never
       refreshed when doing so would rotate their token.
-- [ ] Remove `activeLabel` behavior from loaders and managed stores. Existing fields are
+- [x] Remove `activeLabel` behavior from loaders and managed stores. Existing fields are
       tolerated during migration but ignored and removed on the next managed-store write.
-- [ ] Add `cq accounts` for deduplicated managed identities and `cq sources` for every
+- [x] Add `cq accounts` for deduplicated managed identities and `cq sources` for every
       physical source. Neither command prints credentials.
-- [ ] Removed-command guard: `switch|sync|set-plan`, plus the removed `factory` and
+- [x] Removed-command guard: `switch|sync|set-plan`, plus the removed `factory` and
       `opencode-go` namespaces → stderr v1 hint + exit 2 in top-level and provider forms.
-- [ ] Consolidate help into `printHelp()`, `printHelpProvider(id)`, and one generic
+- [x] Consolidate help into `printHelp()`, `printHelpProvider(id)`, and one generic
       account-management help template.
-- [ ] Tests: remove switch/sync/divergence/active-label tests; retain OAuth and local CRUD
+      Implemented as one pure `helpText(provider)` shared by both forms.
+- [x] Tests: remove switch/sync/divergence/active-label tests; retain OAuth and local CRUD
       tests; add no-harness-write tests, rotating-external-token refusal tests, and generic
       credential-store contract tests for every provider.
-- [ ] Decide Q4 (Claude cookie path) and apply.
-- [ ] Commit: `feat!: own provider credentials without mutating harness auth`
+- [x] Decide Q4 (Claude cookie path) and apply.
+- [x] Commit: `feat!: own provider credentials without mutating harness auth`
+      Included in the integrated v2 migration commit (see execution deviation).
 
 Expected size after Phase 2 must be re-measured; retaining and expanding OAuth means the
 previous 12–14k-line estimate is no longer credible.
 
 ### Phase 3 — Provider interface + shared snapshot
-- [ ] Create `lib/snapshot.js` by moving `buildQuotaSnapshot` + `normalize*` +
+- [x] Create `lib/snapshot.js` by moving `buildQuotaSnapshot` + `normalize*` +
       `normalizeWindowValues` + `sanitizeDisplayText` + `maskEmail` out of the server.
-- [ ] Create `lib/providers/{codex,claude,grok,antigravity}.js`
+- [x] Create `lib/providers/{codex,claude,grok,antigravity}.js`
       implementing the interface in §3.2 on top of existing modules.
-- [ ] Implement proxx as an internal read-only source of the Codex provider, with fixture
+- [x] Implement proxx as an internal read-only source of the Codex provider, with fixture
       tests for merge, deduplication, and remote failure fallback.
-- [ ] Create `lib/quota.js` with `loadSnapshot()` (parallel, single-flight,
+- [x] Create `lib/quota.js` with `loadSnapshot()` (parallel, single-flight,
       `onProgress`).
-- [ ] `--json` now emits the v2 snapshot. Add `schemaVersion: 2`.
-- [ ] `handleQuota` → `lib/cli.js`: parse → `loadSnapshot` → render/JSON. Delete the
+- [x] `--json` now emits the v2 snapshot. Add `schemaVersion: 2`.
+- [x] `handleQuota` → `lib/cli.js`: parse → `loadSnapshot` → render/JSON. Delete the
       seven duplicated blocks.
-- [ ] Tests: snapshot normalizers (moved from `shuvquota-server.test.js`), one
+- [x] Tests: snapshot normalizers (moved from `shuvquota-server.test.js`), one
       contract test per provider (`discover` on fixtures, `normalize` on captured
       payloads), `loadSnapshot` single-flight + partial-failure behaviour.
-- [ ] Commit: `refactor: unify providers behind one interface and shared snapshot`
+- [x] Commit: `refactor: unify providers behind one interface and shared snapshot`
+      Included in the integrated v2 migration commit.
 
 ### Phase 4 — Responsive static renderer
-- [ ] `lib/tui/layout.js` (grid + density tiers + height fallback) and
+- [x] `lib/tui/layout.js` (grid + density tiers + height fallback) and
       `lib/tui/render.js` (cards, table mode, bars, borders).
-- [ ] `lib/tui/width.js`: ANSI stripping, terminal cell width, and truncation with `…`.
+- [x] `lib/tui/width.js`: ANSI stripping, terminal cell width, and truncation with `…`.
       Handle CJK wide characters, combining marks, emoji/surrogate pairs, and control
       removal without runtime dependencies; test dynamic labels and emails.
-- [ ] `cq` one-shot uses `renderStatic`. Delete `drawBox`, `drawQuotaBox`,
+- [x] `cq` one-shot uses `renderStatic`. Delete `drawBox`, `drawQuotaBox`,
       `wrapBoxLine`, `continuationIndent`, `sharedBoxMinWidth`, `QUOTA_BOX_MAX_WIDTH`,
       all `build*UsageLines`, `formatCompactMetric` (folded into tier 1).
-- [ ] Golden layout tests at the sizes listed in §3.7.
-- [ ] Commit: `feat: responsive multi-column quota layout`
+- [x] Golden layout tests at the sizes listed in §3.7.
+- [x] Commit: `feat: responsive multi-column quota layout`
+      Included in the integrated v2 migration commit.
 
 ### Phase 5 — Live TUI
-- [ ] `lib/tui/terminal.js` (alt screen, raw keys, resize, restore-on-exit).
-- [ ] `lib/tui/app.js` (state, refresh loop, keybindings, help overlay, incremental
+- [x] `lib/tui/terminal.js` (alt screen, raw keys, resize, restore-on-exit).
+- [x] `lib/tui/app.js` (state, refresh loop, keybindings, help overlay, incremental
       paint, stale/error footer).
-- [ ] `cq watch` / `cq tui` / `-w`, `--interval`, `--once`.
-- [ ] Manual QA matrix: tmux split panes at 40/60/80/120/200 cols; resize while
+- [x] `cq watch` / `cq tui` / `-w`, `--interval`, `--once`.
+- [x] Manual QA matrix: tmux split panes at 40/60/80/120/200 cols; resize while
       loading; refresh failure mid-session; `Ctrl-C` restores terminal; non-TTY falls
       back to static; `NO_COLOR`.
-- [ ] Unit tests for key parsing and app state transitions (no real TTY needed).
-- [ ] Commit: `feat: live full-screen quota TUI (cq watch)`
+      Used real termctrl PTYs instead of tmux; evidence in `docs/v2-tui-qa.md`.
+- [x] Unit tests for key parsing and app state transitions (no real TTY needed).
+- [x] Commit: `feat: live full-screen quota TUI (cq watch)`
+      Included in the integrated v2 migration commit.
 
 ### Phase 6 — Server and web alignment
-- [ ] Server imports `loadSnapshot` in-process (Q6), projects it through
+- [x] Server imports `loadSnapshot` in-process (Q6), projects it through
       `toPublicSnapshot()`, and removes `executeQuotaCli` and
       `DEFAULT_SHUVQUOTA_CLI_PATH`.
-- [ ] `web/app.js` consumes v2 snapshot; drop v1 shape handling and explicitly migrate
+- [x] `web/app.js` consumes v2 snapshot; drop v1 shape handling and explicitly migrate
       `remainingPercent`/`resetAt`, status severity, summary, divergence removal, and the
       `/api/health` schema version.
-- [ ] Update `shuvquota-server.test.js` for the new loader seam.
-- [ ] Commit: `refactor(server): serve shared snapshot in-process`
+- [x] Update `shuvquota-server.test.js` for the new loader seam.
+- [x] Commit: `refactor(server): serve shared snapshot in-process`
+      Included in the integrated v2 migration commit.
 
 ### Phase 7 — Docs, hygiene, release
-- [ ] Split remaining `shuvquota.test.js` into `test/**`; delete barrel exports.
-- [ ] Rewrite README for v2 (install, `cq`, `cq watch`, managed account login and CRUD,
+- [x] Split remaining `shuvquota.test.js` into `test/**`; delete barrel exports.
+- [x] Rewrite README for v2 (install, `cq`, `cq watch`, managed account login and CRUD,
       providers, credential ownership, sources, JSON schema, PWA, migration from v1).
       Rewrite AGENTS.md (structure, provider interface, OAuth/store contracts, "how to
       add a provider", test layout). Update PRODUCT.md purpose line.
-- [ ] Delete `plan.md`, `PLAN-modularize-refactor.md`, `design-qa.md`, this file's
+- [x] Delete `plan.md`, `PLAN-modularize-refactor.md`, `design-qa.md`, this file's
       completed sections (or move to `docs/`), `.claude/settings.local.json` (add to
       `.gitignore`), fix 0600 test file modes.
-- [ ] `scripts/preflight.js`: require `lib/`, `web/`; drop Factory checks.
-- [ ] `package.json`: version `2.0.0`, description "Self-managed multi-provider quota
+      Obsolete docs/settings removed and modes fixed. This plan is retained as the
+      explicit exception above; current validation is in `docs/v2-validation.md`.
+- [x] `scripts/preflight.js`: require `lib/`, `web/`; drop Factory checks.
+- [x] `package.json`: version `2.0.0`, description "Self-managed multi-provider quota
       monitor…", `files`, `test` script glob.
-- [ ] Commit: `chore: v2.0.0 docs, test split, repo cleanup`
+- [x] Commit: `chore: v2.0.0 docs, test split, repo cleanup`
+      Included in the integrated v2 migration commit.
 
 ---
 

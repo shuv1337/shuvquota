@@ -1,0 +1,8 @@
+provider     account       quota
+────────────────────────────────────────────────────────────
+Codex        personal      error: HTTP 401 unauthorized
+Codex        work          5h 100% · wk 7%
+Claude       main 👩‍💻       sess 64% · wk 41% · Son… --%
+SuperGrok    —             error: token refresh failed: inv…
+Antigravity  pending       loading…
+Antigravity  日本語ラベル  5h 88% · wk 15%

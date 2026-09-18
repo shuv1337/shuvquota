@@ -1,4 +1,4 @@
-import { clampPercent, riskFor } from "./quota-risk.js?v=14";
+import { clampPercent, riskFor } from "./quota-risk.js?v=15";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 75 * 1000;
@@ -132,8 +132,8 @@ function formatCountdown(value) {
 function tightestWindow(account) {
 	const windows = Array.isArray(account?.windows) ? account.windows : [];
 	return windows
-		.filter(window => clampPercent(window?.remainingPercent) !== null)
-		.sort((left, right) => left.remainingPercent - right.remainingPercent)[0] ?? null;
+		.filter(window => clampPercent(window?.percentRemaining) !== null)
+		.sort((left, right) => left.percentRemaining - right.percentRemaining)[0] ?? null;
 }
 
 function showToast(message) {
@@ -178,7 +178,7 @@ function providerRows(snapshot) {
 		return accounts.map((account, index) => ({
 			provider,
 			account,
-			rowKey: `${provider.id}:${index}`,
+			rowKey: `${provider.id}:${account.label ?? "unknown"}:${index}`,
 		}));
 	});
 }
@@ -217,8 +217,8 @@ function renderProviderRow(row) {
 	const { provider, account } = row;
 	const window = tightestWindow(account);
 	const risk = riskFor(account, window);
-	const remaining = clampPercent(window?.remainingPercent);
-	const reset = formatResetDate(window?.resetAt);
+	const remaining = clampPercent(window?.percentRemaining);
+	const reset = formatResetDate(window?.resetsAt);
 	const windows = Array.isArray(account?.windows) ? account.windows : [];
 	const iconPath = PROVIDER_ICONS[provider.id] ?? PROVIDER_ICONS.codex;
 	const details = element("details", {
@@ -263,7 +263,7 @@ function renderProviderRow(row) {
 	const resetCell = cell("Reset (local time)", "reset-cell", [
 		element("span", { className: "reset-primary", text: reset.primary }),
 		element("span", { className: "reset-date", text: reset.secondary }),
-		element("span", { className: "reset-countdown", text: formatCountdown(window?.resetAt) }),
+		element("span", { className: "reset-countdown", text: formatCountdown(window?.resetsAt) }),
 		element("span", { className: "mobile-risk", text: risk.label }),
 	]);
 
@@ -287,8 +287,8 @@ function renderProviderRow(row) {
 		element("span", { className: "limit-primary", text: limitText }),
 		element("span", {
 			className: "limit-secondary",
-			text: account?.bankedResets
-				? `${account.bankedResets.availableCount} banked resets`
+			text: account?.extras?.find(e => e.id === 'banked-resets')
+				? `${account.extras.find(e => e.id === 'banked-resets').value} banked resets`
 				: windows.length > 0 ? "Open for details" : "Quota unavailable",
 		}),
 		image("/icons/ui/chevron-down.svg", "", "row-chevron"),
@@ -307,11 +307,11 @@ function renderProviderRow(row) {
 	const detailBody = element("div", { className: "quota-details" });
 	if (windows.length > 0) {
 		for (const limit of windows) {
-			const limitReset = formatResetDate(limit.resetAt);
+			const limitReset = formatResetDate(limit.resetsAt);
 			detailBody.append(element("div", { className: "limit-detail" }, [
 				element("strong", { text: limit.label ?? "Quota limit" }),
-				element("span", { text: `${formatPercent(limit.remainingPercent)}% remaining` }),
-				element("span", { text: limit.resetAt ? `${limitReset.secondary} · ${formatCountdown(limit.resetAt)}` : "No reset supplied" }),
+				element("span", { text: `${formatPercent(limit.percentRemaining)}% remaining` }),
+				element("span", { text: limit.resetsAt ? `${limitReset.secondary} · ${formatCountdown(limit.resetsAt)}` : "No reset supplied" }),
 			]));
 		}
 	} else {
@@ -320,14 +320,15 @@ function renderProviderRow(row) {
 			element("span", { text: providerSetupHint(provider.id) }),
 		]));
 	}
-	if (account?.bankedResets) {
-		const expirations = Array.isArray(account.bankedResets.expirations)
-			? account.bankedResets.expirations.map(value => formatResetDate(value).secondary).join(" · ")
-			: "Expiration dates unavailable";
-		detailBody.append(element("div", { className: "banked-resets" }, [
-			element("strong", { text: `${account.bankedResets.availableCount} Codex banked resets available` }),
-			element("span", { text: expirations }),
-		]));
+	if (account?.extras?.length > 0) {
+		const banked = account.extras.find(e => e.id === 'banked-resets');
+		const expires = account.extras.find(e => e.id === 'banked-expires');
+		if (banked) {
+			detailBody.append(element("div", { className: "banked-resets" }, [
+				element("strong", { text: `${banked.value} Codex banked resets available` }),
+				element("span", { text: expires ? formatResetDate(expires.value).secondary : "Expiration dates unavailable" }),
+			]));
+		}
 	}
 	details.append(detailBody);
 	return details;
@@ -373,15 +374,11 @@ function renderOverview() {
 	elements.emptyState.hidden = visibleRows.length > 0;
 
 	const partialProviders = state.snapshot.providers?.filter(provider => provider.error) ?? [];
-	const diverged = Object.entries(state.snapshot.divergence ?? {})
-		.filter(([, value]) => value)
-		.map(([key]) => key === "codex" ? "Codex" : "Claude");
 	const notices = [];
 	if (state.stale) notices.push("Showing the last in-memory scan; live quota is currently unavailable.");
 	if (partialProviders.length > 0) {
 		notices.push(`${partialProviders.length} provider${partialProviders.length === 1 ? " has" : "s have"} incomplete data.`);
 	}
-	if (diverged.length > 0) notices.push(`${diverged.join(" and ")} active account state has diverged.`);
 	elements.notice.textContent = notices.join(" ");
 	elements.notice.hidden = notices.length === 0;
 }
@@ -393,32 +390,18 @@ function captureHistory(snapshot) {
 	const tightest = rows
 		.map(row => ({ provider: row.provider.name, account: row.account.label, window: tightestWindow(row.account) }))
 		.filter(item => item.window)
-		.sort((left, right) => left.window.remainingPercent - right.window.remainingPercent)[0] ?? null;
+		.sort((left, right) => left.window.percentRemaining - right.window.percentRemaining)[0] ?? null;
+	
+	const providers = Array.isArray(snapshot?.providers) ? snapshot.providers : [];
+	const accountCount = providers.reduce((sum, p) => sum + (Array.isArray(p.accounts) ? p.accounts.length : 0), 0);
+
 	state.history.unshift({
-		accountCount: snapshot.summary?.accountCount ?? rows.length,
+		accountCount,
 		generatedAt: snapshot.generatedAt,
-		providerCount: snapshot.summary?.providerCount ?? snapshot.providers?.length ?? 0,
+		providerCount: providers.length,
 		tightest,
 	});
 	state.history = state.history.slice(0, HISTORY_LIMIT);
-}
-
-function renderHistory() {
-	clear(elements.historyList);
-	elements.historyEmpty.hidden = state.history.length > 0;
-	for (const item of state.history) {
-		const runway = item.tightest
-			? `${formatPercent(item.tightest.window.remainingPercent)}% · ${item.tightest.provider}`
-			: "No runway reported";
-		elements.historyList.append(element("article", { className: "history-item" }, [
-			element("div", {}, [
-				element("strong", { text: formatUpdated(item.generatedAt).replace("Updated ", "") }),
-				element("time", { text: formatCountdown(item.generatedAt), attributes: { datetime: item.generatedAt } }),
-			]),
-			element("span", { className: "history-runway", text: runway }),
-			element("span", { text: `${item.accountCount} account${item.accountCount === 1 ? "" : "s"}` }),
-		]));
-	}
 }
 
 function updateConnectionUi() {
@@ -471,7 +454,7 @@ async function refreshQuota({ manual = false } = {}) {
 		});
 		const snapshot = await response.json();
 		if (!response.ok) throw new Error("Quota service unavailable");
-		if (snapshot?.schemaVersion !== 1 || !Array.isArray(snapshot.providers)) {
+		if (snapshot?.schemaVersion !== 2 || !Array.isArray(snapshot.providers)) {
 			throw new Error("Unsupported quota snapshot");
 		}
 		state.snapshot = snapshot;

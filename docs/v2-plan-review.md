@@ -32,17 +32,18 @@ Reviewed against baseline `59089120`; 2026-09-18 PDT.
    on stderr. Enforce the 15-second interval floor. Account-level failures remain
    account errors even if all accounts fail; whole-scan failures retain prior data.
 
-## OAuth gate — pending independent protocol evidence
+## OAuth gate — source feasibility established
 
 The existing repository has login flows for Codex and Claude, but only discovery
 and refresh for Grok and Antigravity. Their missing adapters are implementation
 work, not proof of protocol impossibility. The configured Google client secret
 also does not by itself rule out an installed-app flow.
 
-Before Phase 2, establish supported authorize/token endpoints, redirect method,
-scopes, client configuration, and session rotation for all four providers. Clearly
-separate source-code evidence, provider policy, and actual live enrollment checks.
-Do not silently classify legacy imported rotating sessions as independent.
+Grok's independent check found the missing login protocols already implemented
+in local harness source. `v2-oauth.md` records endpoints, redirect methods,
+scopes, client configuration, rotation handling, and policy limitations. This
+clears implementation, not live enrollment validation. Legacy imported rotating
+sessions remain unverified until independently reauthenticated.
 
 The plan's stricter recommended Q2/Q8 behavior remains the default: external
 credentials are usable only while their access token is usable. Allowing Google
@@ -53,5 +54,6 @@ technical fix, and has not been adopted implicitly.
 
 - Opus: repository-grounded migration review.
 - Fable: independent 695-test baseline and pack/preflight audit.
-- Sol: protocol feasibility review (pending).
+- Grok: source-backed protocol feasibility review; see `v2-oauth.md`.
+- Sol: initial protocol feasibility review (still pending).
 - Individual model outcomes and corrections: `../MODEL-NOTES-v2.md`.

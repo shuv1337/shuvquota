@@ -7,27 +7,34 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+
 import {
 	ANTIGRAVITY_CLOUD_CODE_URL,
 	ANTIGRAVITY_METHOD_ID,
 	ANTIGRAVITY_TOKEN_URL,
 	ANTIGRAVITY_TIMEOUT_MS,
 	ANTIGRAVITY_USER_AGENT,
+} from "./lib/constants.js";
+
+import {
 	normalizeAntigravityAccount,
 	splitAntigravityRefresh,
 	loadAntigravityAccountsFromEnv,
 	loadAntigravityAccountsFromV1File,
 	loadAntigravityAccountsFromIntegrationDb,
 	loadAllAntigravityAccounts,
+} from "./lib/antigravity-accounts.js";
+
+import {
 	normalizeAntigravityQuota,
 	fetchAntigravityUsage,
+} from "./lib/antigravity-usage.js";
+
+import {
 	isAntigravityTokenExpiring,
 	refreshAntigravityToken,
 	ensureFreshAntigravityToken,
-	buildAntigravityUsageLines,
-	printHelp,
-	printHelpAntigravity,
-} from "./shuvquota.js";
+} from "./lib/antigravity-tokens.js";
 
 const QUOTA = {
 	groups: [
@@ -389,31 +396,5 @@ describe("Antigravity token refresh", () => {
 			}),
 		});
 		expect(result.error).toContain("HTTP 400");
-	});
-});
-
-describe("Antigravity display", () => {
-	test("printHelp mentions the namespace", () => {
-		const lines = [];
-		const original = console.log;
-		console.log = (value) => lines.push(String(value));
-		printHelp();
-		printHelpAntigravity();
-		console.log = original;
-		const text = lines.join("\n");
-		expect(text).toContain("antigravity");
-		expect(text).toContain("Google AI Pro");
-	});
-
-	test("renders Gemini 5h and weekly remaining", () => {
-		const lines = buildAntigravityUsageLines({
-			label: "user@gmail.com",
-			paidTier: "g1-pro-tier",
-			source: "/tmp/opencode.db",
-		}, { success: true, usage: normalizeAntigravityQuota(QUOTA) });
-		expect(lines[0]).toContain("Antigravity");
-		expect(lines[0]).toContain("Google AI Pro");
-		expect(lines.some(line => line.includes("Gemini 5h"))).toBe(true);
-		expect(lines.some(line => line.includes("Gemini weekly"))).toBe(true);
 	});
 });

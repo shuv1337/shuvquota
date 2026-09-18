@@ -6,14 +6,14 @@ product
 
 ## Users
 
-Developers and AI-tool power users who manage multiple Codex, Claude, Factory, Grok, and
+Developers and AI-tool power users who manage multiple Codex, Claude, Grok, and
 Antigravity accounts from a terminal. They need to check quota at a glance, often in narrow split panes,
 without interrupting their current workflow.
 
 ## Product Purpose
 
-Shuvquota provides one dependable CLI for account management, credential synchronization,
-and quota monitoring across supported AI providers. Success means current account and quota
+Shuvquota provides one dependable CLI for independently managed accounts and responsive
+quota monitoring across supported AI providers. Success means current account and quota
 state is fast to scan, safe to act on, and equally usable in wide terminals, narrow panes,
 scripts, and no-color environments.
 

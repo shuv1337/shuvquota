@@ -17,14 +17,14 @@ export function clampPercent(value) {
  * @returns {{id: string, label: string, copy: string}}
  */
 export function riskFor(account, window) {
-	if (!account || account.status === "error" || account.status === "unavailable" || !window) {
+	if (!account || account.status === "error" || account.status === "loading" || !window) {
 		return {
 			id: "unknown",
-			label: account?.status === "error" ? "Unavailable" : "Not reported",
+			label: account?.status === "error" ? "Unavailable" : account?.status === "loading" ? "Loading" : "Not reported",
 			copy: "No current runway",
 		};
 	}
-	const remaining = clampPercent(window.remainingPercent);
+	const remaining = clampPercent(window.percentRemaining);
 	if (remaining === null) {
 		return { id: "unknown", label: "Not reported", copy: "No current runway" };
 	}

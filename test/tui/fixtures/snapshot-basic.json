@@ -1,0 +1,80 @@
+{
+	"schemaVersion": 2,
+	"generatedAt": "2026-09-17T19:00:00Z",
+	"providers": [
+		{
+			"id": "grok",
+			"name": "SuperGrok",
+			"error": "token refresh failed: invalid_grant",
+			"accounts": []
+		},
+		{
+			"id": "antigravity",
+			"name": "Antigravity",
+			"accounts": [
+				{
+					"label": "日本語ラベル",
+					"email": "kenji@example.jp",
+					"plan": "Google AI Pro",
+					"status": "ok",
+					"windows": [
+						{ "id": "5h", "label": "5h", "percentRemaining": 88, "resetsAt": "2026-09-17T21:30:00Z" },
+						{ "id": "weekly", "label": "Weekly", "percentRemaining": 15, "resetsAt": "2026-09-20T07:00:00Z" }
+					]
+				},
+				{
+					"label": "pending",
+					"status": "loading",
+					"windows": []
+				}
+			]
+		},
+		{
+			"id": "claude",
+			"name": "Claude",
+			"accounts": [
+				{
+					"label": "main 👩‍💻",
+					"email": "someone@example.com",
+					"plan": "Max 20x",
+					"status": "ok",
+					"windows": [
+						{ "id": "session", "label": "Session", "percentRemaining": 64, "resetsAt": "2026-09-17T22:15:00Z" },
+						{ "id": "weekly", "label": "Weekly", "percentRemaining": 41, "resetsAt": "2026-09-22T17:00:00Z" },
+						{ "id": "sonnet", "label": "Sonnet", "percentRemaining": null, "resetsAt": null }
+					],
+					"extras": [
+						{ "label": "org", "value": "acme" }
+					]
+				}
+			]
+		},
+		{
+			"id": "codex",
+			"name": "Codex",
+			"accounts": [
+				{
+					"label": "work",
+					"email": "shuv@example.org",
+					"plan": "Plus",
+					"status": "ok",
+					"windows": [
+						{ "id": "5h", "label": "5h", "percentRemaining": 100, "resetsAt": "2026-09-17T23:59:00Z" },
+						{ "id": "weekly", "label": "Weekly", "percentRemaining": 7, "resetsAt": "2026-09-24T19:00:00Z" }
+					],
+					"extras": [
+						{ "label": "credits", "value": "12" }
+					]
+				},
+				{
+					"label": "personal",
+					"email": "p@example.org",
+					"plan": "Free",
+					"status": "error",
+					"error": "HTTP 401 unauthorized",
+					"windows": []
+				}
+			]
+		}
+	]
+}

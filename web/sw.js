@@ -1,12 +1,12 @@
-const CACHE_VERSION = "v14";
+const CACHE_VERSION = "v15";
 const SHELL_CACHE = `shuvquota-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `shuvquota-static-${CACHE_VERSION}`;
 
 const SHELL_URLS = [
 	"/index.html",
-	"/app.js?v=14",
-	"/quota-risk.js?v=14",
-	"/styles.css?v=14",
+	"/app.js?v=15",
+	"/quota-risk.js?v=15",
+	"/styles.css?v=15",
 	"/manifest.webmanifest",
 	"/fonts/barlow-condensed-500.woff2",
 	"/fonts/barlow-condensed-600.woff2",
