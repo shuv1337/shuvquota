@@ -1,4 +1,4 @@
-import { clampPercent, riskFor } from "./quota-risk.js?v=13";
+import { clampPercent, riskFor } from "./quota-risk.js?v=14";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 75 * 1000;
@@ -8,9 +8,7 @@ const PROVIDER_ICONS = Object.freeze({
 	codex: "/icons/providers/openai.svg",
 	claude: "/icons/providers/anthropic.svg",
 	grok: "/icons/providers/xai.svg",
-	synthetic: "/icons/providers/synthetic.svg",
 	antigravity: "/icons/providers/antigravity.svg",
-	"opencode-go": "/icons/providers/opencode-go.svg",
 });
 
 const state = {
@@ -206,14 +204,8 @@ function cell(label, className, children) {
 }
 
 function providerSetupHint(providerId) {
-	if (providerId === "opencode-go") {
-		return "Set the OpenCode Go workspace and dashboard cookie in ~/.shuvquota.env.";
-	}
 	if (providerId === "grok") {
 		return "Sign in with SuperGrok OAuth in pi, OpenCode, or Hermes.";
-	}
-	if (providerId === "synthetic") {
-		return "Set SYNTHETIC_API_KEY or configure Synthetic in shuvcode.";
 	}
 	if (providerId === "antigravity") {
 		return "Connect Google AI Pro in shuvcode, or set ANTIGRAVITY_REFRESH.";

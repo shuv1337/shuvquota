@@ -218,11 +218,9 @@ describe("buildQuotaSnapshot", () => {
 			"codex",
 			"claude",
 			"grok",
-			"synthetic",
 			"antigravity",
-			"opencode-go",
 		]);
-		expect(snapshot.summary).toEqual({ providerCount: 6, accountCount: 6, attention: 4 });
+		expect(snapshot.summary).toEqual({ providerCount: 4, accountCount: 4, attention: 4 });
 		expect(snapshot.divergence).toEqual({ codex: true, claude: false });
 
 		const codex = snapshot.providers[0].accounts[0];
@@ -258,14 +256,7 @@ describe("buildQuotaSnapshot", () => {
 		expect(grok.windows.map(window => window.usedPercent)).toEqual([32, 12, 100]);
 		expect(grok.status).toBe("attention");
 
-		const synthetic = snapshot.providers[3].accounts[0];
-		expect(synthetic.label).toBe("syntheticscript");
-		expect(synthetic.plan).toBe("Synthetic");
-		expect(synthetic.status).toBe("ok");
-		expect(synthetic.windows.map(window => window.id)).toEqual(["5h", "weekly", "requests", "search"]);
-		expect(synthetic.windows[0].remainingPercent).toBe(81.6);
-
-		const antigravity = snapshot.providers[4].accounts[0];
+		const antigravity = snapshot.providers[3].accounts[0];
 		expect(antigravity.label).toBe("antigravityscript");
 		expect(antigravity.email).toBe("a***@example.com");
 		expect(antigravity.plan).toBe("Google AI Pro");
@@ -277,45 +268,26 @@ describe("buildQuotaSnapshot", () => {
 			windowSeconds: 18000,
 		});
 
-		const opencodeGoProvider = snapshot.providers[5];
-		expect(opencodeGoProvider).toMatchObject({ id: "opencode-go", name: "OpenCode Go" });
-		const opencodeGo = opencodeGoProvider.accounts[0];
-		expect(opencodeGo.label).toBe("dashboardscript");
-		expect(opencodeGo.plan).toBe("Go");
-		expect(opencodeGo.status).toBe("ok");
-		expect(opencodeGo.windows).toEqual([
-			{
-				id: "rolling",
-				label: "5h",
-				usedPercent: 25,
-				remainingPercent: 75,
-				resetAt: "2026-07-16T12:30:00.000Z",
-				windowSeconds: 18000,
-			},
-			{
-				id: "weekly",
-				label: "Weekly",
-				usedPercent: 60,
-				remainingPercent: 40,
-				resetAt: "2026-07-20T00:00:00.000Z",
-				windowSeconds: 604800,
-			},
-			{
-				id: "monthly",
-				label: "Monthly",
-				usedPercent: 10,
-				remainingPercent: 90,
-				resetAt: "2026-08-01T00:00:00.000Z",
-				windowSeconds: null,
-			},
-		]);
+		// Removed v1 providers present in the raw payload never become providers.
+		const ids = snapshot.providers.map(provider => provider.id);
+		expect(ids).not.toContain("synthetic");
+		expect(ids).not.toContain("opencode-go");
+		expect(ids).not.toContain("factory");
 	});
 
-	test("excludes Factory data even when the combined CLI payload contains it", () => {
+	test("excludes removed-provider data even when a v1 CLI payload contains it", () => {
 		const snapshot = buildQuotaSnapshot({
 			factory: [{
 				label: "must-not-render",
 				accountId: "factory-secret",
+			}],
+			synthetic: [{
+				label: "synthetic-must-not-render",
+				apiKey: "sk-synthetic-secret",
+			}],
+			"opencode-go": [{
+				label: "go-must-not-render",
+				authCookie: "opencode-auth-cookie-secret",
 			}],
 		}, FIXED_NOW);
 
@@ -323,13 +295,18 @@ describe("buildQuotaSnapshot", () => {
 			"codex",
 			"claude",
 			"grok",
-			"synthetic",
 			"antigravity",
-			"opencode-go",
 		]);
-		expect(snapshot.summary).toEqual({ providerCount: 6, accountCount: 0 });
-		expect(JSON.stringify(snapshot)).not.toContain("factory-secret");
-		expect(JSON.stringify(snapshot)).not.toContain("must-not-render");
+		expect(snapshot.summary).toEqual({ providerCount: 4, accountCount: 0 });
+		const serialized = JSON.stringify(snapshot);
+		for (const leaked of [
+			"factory-secret",
+			"must-not-render",
+			"sk-synthetic-secret",
+			"opencode-auth-cookie-secret",
+		]) {
+			expect(serialized).not.toContain(leaked);
+		}
 	});
 
 	test("drops paths, raw IDs, tokens, detailed usage, refresh data, and raw divergence", () => {
@@ -395,7 +372,7 @@ describe("buildQuotaSnapshot", () => {
 		expect(serialized).not.toContain("backend exception");
 	});
 
-	test("categorizes OpenCode Go dashboard errors without exposing scrape credentials", () => {
+	test("ignores removed-provider error entries without exposing their credentials", () => {
 		const snapshot = buildQuotaSnapshot({
 			"opencode-go": [{
 				label: "go",
@@ -407,14 +384,9 @@ describe("buildQuotaSnapshot", () => {
 			}],
 		}, FIXED_NOW);
 
-		const provider = snapshot.providers.find(item => item.id === "opencode-go");
-		expect(provider.error).toBe("Authentication required");
-		expect(provider.accounts[0]).toMatchObject({
-			label: "go",
-			plan: "Go",
-			status: "error",
-			windows: [],
-		});
+		expect(snapshot.providers.find(item => item.id === "opencode-go")).toBeUndefined();
+		expect(snapshot.providers).toHaveLength(4);
+		expect(snapshot.providers.every(provider => provider.error === undefined)).toBe(true);
 		const serialized = JSON.stringify(snapshot);
 		for (const secret of [
 			"error-auth-cookie-secret",
@@ -443,9 +415,8 @@ describe("buildQuotaSnapshot", () => {
 		}, FIXED_NOW);
 		expect(snapshot.divergence).toEqual({ codex: true, claude: false });
 		expect(snapshot.providers[2].name).toBe("SuperGrok");
-		expect(snapshot.providers[3].name).toBe("Synthetic");
-		expect(snapshot.providers[4].name).toBe("Antigravity");
-		expect(snapshot.providers[5].name).toBe("OpenCode Go");
+		expect(snapshot.providers[3].name).toBe("Antigravity");
+		expect(snapshot.providers).toHaveLength(4);
 	});
 });
 
@@ -505,7 +476,6 @@ describe("quota process execution", () => {
 			"--json",
 			"--no-color",
 			"--local",
-			"--no-factory",
 		]);
 		expect(invocation.options.shell).toBe(false);
 		expect(invocation.options.timeout).toBe(1234);
@@ -645,11 +615,21 @@ describe("static file resolution and MIME", () => {
 			"/manifest.webmanifest",
 			"/sw.js",
 			"/icons/devil-phone.svg",
-			"/icons/providers/opencode-go.svg",
-			"/icons/providers/synthetic.svg",
+			"/icons/providers/openai.svg",
+			"/icons/providers/anthropic.svg",
+			"/icons/providers/xai.svg",
 			"/icons/providers/antigravity.svg",
 		]) {
 			expect(await resolveStaticFile(path)).not.toBeNull();
+		}
+	});
+
+	test("no longer ships removed-provider icons", async () => {
+		for (const path of [
+			"/icons/providers/opencode-go.svg",
+			"/icons/providers/synthetic.svg",
+		]) {
+			expect(await resolveStaticFile(path)).toBeNull();
 		}
 	});
 });
@@ -728,7 +708,7 @@ describe("shuvquota HTTP server", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers["cache-control"]).toContain("no-store");
 		expect(payload.schemaVersion).toBe(1);
-		expect(payload.providers).toHaveLength(6);
+		expect(payload.providers).toHaveLength(4);
 		expect(response.body).not.toContain("acct-secret");
 		expect(quotaCalls).toBe(1);
 	});

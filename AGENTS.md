@@ -4,7 +4,7 @@ Guidelines for AI coding agents working in this repository.
 
 ## Project Overview
 
-`shuvquota` is a zero-dependency Node.js CLI for managing multiple OpenAI Codex, Claude, Factory.ai, SuperGrok (xAI OAuth), Synthetic, and Google AI Pro / Antigravity credentials. Provides account management (add, switch, remove, list, sync) and quota checking using only Node.js built-in modules.
+`shuvquota` is a zero-dependency Node.js CLI for managing multiple OpenAI Codex, Claude, SuperGrok (xAI OAuth), and Google AI Pro / Antigravity credentials. The v2 migration is tracked in `PLAN-v2-tui-readonly.md`; consult its completed phases before changing credential ownership or command routing.
 
 ## Tech Stack
 
@@ -51,7 +51,6 @@ shuvquota/
 ├── shuvquota.js            # Entry point: main(), CLI routing, barrel re-exports
 ├── shuvquota.test.js       # Main test suite (imports via barrel re-exports)
 ├── grok.test.js              # SuperGrok / Grok OAuth quota tests
-├── synthetic.test.js         # Synthetic API quota tests
 ├── lib/
 │   ├── constants.js          # All config constants and path definitions
 │   ├── color.js              # Terminal color output helpers
@@ -64,15 +63,9 @@ shuvquota/
 │   ├── claude-accounts.js    # Claude account loading, session/OAuth resolution
 │   ├── codex-tokens.js       # OpenAI token refresh and multi-store persistence
 │   ├── claude-tokens.js      # Claude token refresh and multi-store persistence
-│   ├── factory-crypto.js     # AES-256-GCM encryption/decryption for Factory auth.v2 files
-│   ├── factory-accounts.js   # Factory account loading, dedup, active-label
-│   ├── factory-tokens.js     # Factory token refresh and multi-store persistence
-│   ├── factory-usage.js      # Factory Analytics API fetch and billing period calculation
 │   ├── grok-accounts.js      # SuperGrok/xAI OAuth account loading from pi/OpenCode/Hermes
 │   ├── grok-tokens.js        # SuperGrok token refresh with fan-out multi-store writeback
 │   ├── grok-usage.js         # SuperGrok weekly credits billing fetch (cli-chat-proxy)
-│   ├── synthetic-accounts.js # Synthetic key loading from env and integration SQLite
-│   ├── synthetic-usage.js    # Synthetic quota normalization and fetch
 │   ├── antigravity-accounts.js # Google AI Pro / Antigravity OAuth loading
 │   ├── antigravity-tokens.js # In-memory Google OAuth refresh (no store writeback)
 │   ├── antigravity-usage.js  # Cloud Code retrieveUserQuotaSummary fetch
@@ -110,15 +103,9 @@ shuvquota.js (entry)
   ├── lib/codex-tokens.js       ← constants, paths, jwt, token-match, container, fs
   ├── lib/claude-tokens.js      ← constants, paths, token-match, container, fs
   ├── lib/codex-usage.js        ← constants
-  ├── lib/factory-crypto.js     ← constants, fs
-  ├── lib/factory-accounts.js   ← constants, jwt, container, factory-crypto
-  ├── lib/factory-tokens.js     ← constants, jwt, token-match, container, factory-crypto
-  ├── lib/factory-usage.js      ← constants
   ├── lib/grok-accounts.js      ← constants, jwt, paths, token-match
   ├── lib/grok-tokens.js        ← constants, jwt, fs, grok-accounts
   ├── lib/grok-usage.js         ← constants
-  ├── lib/synthetic-accounts.js ← constants
-  ├── lib/synthetic-usage.js    ← constants
   ├── lib/antigravity-accounts.js ← constants, token-match
   ├── lib/antigravity-tokens.js ← constants
   ├── lib/antigravity-usage.js  ← constants
@@ -147,12 +134,10 @@ shuvquota.js (entry)
 | New constant | `lib/constants.js` |
 | New Codex account loader | `lib/codex-accounts.js` |
 | New Claude account loader | `lib/claude-accounts.js` |
-| New Factory account loader | `lib/factory-accounts.js` |
-| Factory auth.v2 crypto | `lib/factory-crypto.js` |
 | New display/formatting | `lib/display.js` |
-| New CLI subcommand handler | `lib/handlers.js` (+ register in `handleCodex`/`handleClaude`/`handleFactory`) |
+| New CLI subcommand handler | `lib/handlers.js` (+ register in the provider router) |
 | New OAuth flow logic | `lib/oauth.js` or `lib/claude-oauth.js` |
-| Token persistence changes | `lib/codex-tokens.js`, `lib/claude-tokens.js`, `lib/factory-tokens.js`, or `lib/grok-tokens.js` |
+| Token persistence changes | `lib/codex-tokens.js`, `lib/claude-tokens.js`, or `lib/grok-tokens.js` |
 | New Grok/SuperGrok loader | `lib/grok-accounts.js` |
 | Grok billing fetch | `lib/grok-usage.js` |
 | New Antigravity loader | `lib/antigravity-accounts.js` |
@@ -165,7 +150,7 @@ shuvquota.js (entry)
 `lib/token-match.js` provides unified helpers that replace the old duplicated OpenAI/Claude token-match patterns:
 
 - `isOauthTokenMatch(params)` — single function replaces both `isOpenAiOauthTokenMatch` and `isClaudeOauthTokenMatch`
-- `normalizeEntryTokens(entry, fieldMap)` — generic field normalizer using `OPENAI_TOKEN_FIELDS`, `CLAUDE_TOKEN_FIELDS`, `FACTORY_TOKEN_FIELDS`, or `XAI_TOKEN_FIELDS`
+- `normalizeEntryTokens(entry, fieldMap)` — generic field normalizer using `OPENAI_TOKEN_FIELDS`, `CLAUDE_TOKEN_FIELDS`, or `XAI_TOKEN_FIELDS`
 - `updateEntryTokens(entry, account, fieldMap)` — generic field updater
 - `resolveKey(entry, candidates)` — picks the first existing key from candidates
 
@@ -319,7 +304,7 @@ afterEach(() => {
 
 ### Test Counts
 
-As of latest: **686 tests** across the repository test files. All tests must pass before any commit.
+All tests must pass before any commit. Record observed counts in `docs/v2-validation.md` during the migration.
 
 ### SuperGrok / Grok OAuth notes
 
@@ -328,15 +313,6 @@ As of latest: **686 tests** across the repository test files. All tests must pas
 - Billing endpoint: `https://cli-chat-proxy.grok.com/v1/billing?format=credits` (weekly credits + Api/GrokBuild product split).
 - **Refresh fan-out hard rule**: xAI rotates refresh tokens. On refresh, write the new access+refresh to every store that held the *same previous refresh token*. Never refresh into an isolated store only — that bricks other agents.
 - Diverged refresh sessions (same user, different refresh) are left alone.
-
-### Synthetic notes
-
-- Namespace: `cq synthetic` / `cq synthetic quota` (also included in default quota output).
-- Credentials are read from `SYNTHETIC_API_KEY`, `SYNTHETIC_ACCOUNTS`, or the shuvcode integration-v2 SQLite database.
-- The SQLite reader dynamically imports `node:sqlite`; Node versions without it skip that optional source.
-- Quota endpoint: `https://api.synthetic.new/v2/quotas` (rolling 5-hour, weekly credits, subscription requests, and hourly search).
-- `cq synthetic list` shows labels and sources, never the API key.
-- `cq synthetic remove <label>` (alias: `disable`) deletes the matching integration-v2 credential (`DELETE ... WHERE id = ? AND integration_id = 'synthetic'`). Env-only accounts cannot be removed via CLI.
 
 ### Google AI Pro / Antigravity notes
 

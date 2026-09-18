@@ -1,7 +1,7 @@
 {
 	"name": "shuvquota",
 	"short_name": "shuvquota",
-	"description": "A focused dashboard for Codex, Claude, SuperGrok, and OpenCode Go quota usage.",
+	"description": "A focused dashboard for Codex, Claude, SuperGrok, and Antigravity quota usage.",
 	"id": "/",
 	"start_url": "/",
 	"scope": "/",

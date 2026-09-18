@@ -14,22 +14,6 @@ artwork and is not covered by the notices below.
 The provider marks remain trademarks of their respective owners. Inclusion here does not imply
 endorsement.
 
-## OpenCode
-
-- Asset: `providers/opencode-go.svg`
-- Source: OpenCode brand mark supplied for local shuvquota provider display
-- Changes: none beyond packaging as a static SVG under `providers/`
-
-The OpenCode mark remains a trademark of its owner. Inclusion here does not imply endorsement.
-
-## Synthetic
-
-- Asset: `providers/synthetic.svg`
-- Source: Synthetic Lab flower mark as used by CodexBar / Synthetic.new
-- Changes: presentation stroke/fill set to `#F5F3EF` for the dark shuvquota surface
-
-The Synthetic mark remains a trademark of Synthetic Lab, Co. Inclusion here does not imply endorsement.
-
 ## Google Antigravity
 
 - Asset: `providers/antigravity.svg`

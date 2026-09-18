@@ -16,32 +16,27 @@ loadEnvFile();
 
 // ─── Imports from lib modules ────────────────────────────────────────────────
 
-import { PRIMARY_CMD, MULTI_ACCOUNT_PATHS, CODEX_CLI_AUTH_PATH, CLAUDE_MULTI_ACCOUNT_PATHS } from "./lib/constants.js";
+import { PRIMARY_CMD, MULTI_ACCOUNT_PATHS, CODEX_CLI_AUTH_PATH, CLAUDE_MULTI_ACCOUNT_PATHS, REMOVED_NAMESPACES, REMOVED_NAMESPACE_EXIT_CODE } from "./lib/constants.js";
 import { GREEN, RED, YELLOW, setNoColorFlag, supportsColor, colorize, getPackageVersion } from "./lib/color.js";
 import { decodeJWT, extractAccountId, extractProfile } from "./lib/jwt.js";
 import {
-	printHelp, printHelpCodex, printHelpClaude, printHelpFactory, printHelpFactoryQuota,
+	printHelp, printHelpCodex, printHelpClaude,
 	printHelpGrok, printHelpGrokQuota,
-	printHelpSynthetic, printHelpSyntheticQuota, printHelpSyntheticRemove,
 	printHelpAntigravity, printHelpAntigravityQuota,
-	printHelpOpenCodeGo, printHelpOpenCodeGoQuota,
 	printHelpAdd, printHelpCodexReauth, printHelpSwitch, printHelpCodexSync,
 	printHelpList, printHelpRemove, printHelpQuota,
 	printHelpClaudeAdd, printHelpClaudeReauth, printHelpClaudeSwitch, printHelpClaudeSync,
 	printHelpClaudeList, printHelpClaudeRemove, printHelpClaudeQuota,
 	printHelpProxx,
+	formatRemovedNamespaceError,
 } from "./lib/display.js";
 import {
 	handleCodex,
 	handleClaude,
-	handleFactory,
-	handleFactoryQuota,
 	handleQuota,
 	handleProxx,
 	handleGrok,
-	handleSynthetic,
 	handleAntigravity,
-	handleOpenCodeGo,
 } from "./lib/handlers.js";
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -60,23 +55,9 @@ async function main() {
 		manual: args.includes("--manual"),
 		dryRun: args.includes("--dry-run"),
 		showEmail: args.includes("--show-email"),
-		noFactory: args.includes("--no-factory"),
 		native: nativeFlag,
 		local: args.includes("--local") || !nativeFlag,
 	};
-
-	// Parse --billing-day flag for Factory quota
-	const billingDayIdx = args.indexOf("--billing-day");
-	if (billingDayIdx !== -1 && billingDayIdx + 1 < args.length) {
-		const raw = args[billingDayIdx + 1];
-		const parsed = parseInt(raw, 10);
-		if (Number.isFinite(parsed)) {
-			flags.billingDay = parsed;
-		} else {
-			console.error(colorize(`Error: Invalid --billing-day value: ${raw}`, RED));
-			process.exit(1);
-		}
-	}
 
 	// Parse --base-url flag for proxx
 	const baseUrlIdx = args.indexOf("--base-url");
@@ -100,11 +81,8 @@ async function main() {
 	}
 
 	// Extract non-flag arguments
-	// Filter out flags and their values (e.g., --billing-day N)
+	// Filter out flags and their values (e.g., --base-url URL)
 	const flagsWithValues = new Set();
-	if (billingDayIdx !== -1 && billingDayIdx + 1 < args.length) {
-		flagsWithValues.add(billingDayIdx + 1);
-	}
 	if (baseUrlIdx !== -1 && baseUrlIdx + 1 < args.length) {
 		flagsWithValues.add(baseUrlIdx + 1);
 	}
@@ -113,20 +91,29 @@ async function main() {
 	}
 	const nonFlagArgs = args.filter((a, i) => !a.startsWith("-") && !flagsWithValues.has(i));
 	const firstArg = nonFlagArgs[0];
-	const namespace = firstArg === "codex" || firstArg === "claude" || firstArg === "factory"
-		|| firstArg === "grok" || firstArg === "synthetic" || firstArg === "antigravity"
-		|| firstArg === "opencode-go"
-		|| firstArg === "proxx"
-		? firstArg
-		: null;
-	const namespaceArgs = namespace ? nonFlagArgs.slice(1) : nonFlagArgs;
-	const subcommand = namespace ? namespaceArgs[0] : null;
 
 	// Handle --version flag
 	if (args.includes("--version") || args.includes("-v")) {
 		console.log(getPackageVersion());
 		return;
 	}
+
+	// Removed provider namespaces (v2): top-level `cq factory …` and
+	// provider-qualified `cq codex factory …` forms both exit 2 with a v1 hint.
+	const removedIdx = nonFlagArgs.findIndex((arg, i) => i < 2 && REMOVED_NAMESPACES.includes(arg));
+	if (removedIdx !== -1) {
+		const removed = nonFlagArgs[removedIdx];
+		console.error(colorize(formatRemovedNamespaceError(removed, nonFlagArgs.slice(removedIdx + 1)), RED));
+		process.exit(REMOVED_NAMESPACE_EXIT_CODE);
+	}
+
+	const namespace = firstArg === "codex" || firstArg === "claude"
+		|| firstArg === "grok" || firstArg === "antigravity"
+		|| firstArg === "proxx"
+		? firstArg
+		: null;
+	const namespaceArgs = namespace ? nonFlagArgs.slice(1) : nonFlagArgs;
+	const subcommand = namespace ? namespaceArgs[0] : null;
 
 	const legacyCommands = ["add", "reauth", "switch", "list", "remove", "quota", "sync"];
 	if (!namespace && firstArg && legacyCommands.includes(firstArg)) {
@@ -167,13 +154,6 @@ async function main() {
 			}
 			return;
 		}
-	if (namespace === "factory") {
-		switch (subcommand) {
-			case "quota": printHelpFactoryQuota(); break;
-			default: printHelpFactory(); break;
-		}
-		return;
-	}
 	if (namespace === "grok") {
 		switch (subcommand) {
 			case "quota": printHelpGrokQuota(); break;
@@ -181,26 +161,10 @@ async function main() {
 		}
 		return;
 	}
-	if (namespace === "synthetic") {
-		switch (subcommand) {
-			case "quota": printHelpSyntheticQuota(); break;
-			case "remove":
-			case "disable": printHelpSyntheticRemove(); break;
-			default: printHelpSynthetic(); break;
-		}
-		return;
-	}
 	if (namespace === "antigravity") {
 		switch (subcommand) {
 			case "quota": printHelpAntigravityQuota(); break;
 			default: printHelpAntigravity(); break;
-		}
-		return;
-	}
-	if (namespace === "opencode-go") {
-		switch (subcommand) {
-			case "quota": printHelpOpenCodeGoQuota(); break;
-			default: printHelpOpenCodeGo(); break;
 		}
 		return;
 	}
@@ -219,24 +183,12 @@ async function main() {
 		await handleClaude(namespaceArgs, flags);
 		return;
 	}
-	if (namespace === "factory") {
-		await handleFactory(namespaceArgs, flags);
-		return;
-	}
 	if (namespace === "grok") {
 		await handleGrok(namespaceArgs, flags);
 		return;
 	}
-	if (namespace === "synthetic") {
-		await handleSynthetic(namespaceArgs, flags);
-		return;
-	}
 	if (namespace === "antigravity") {
 		await handleAntigravity(namespaceArgs, flags);
-		return;
-	}
-	if (namespace === "opencode-go") {
-		await handleOpenCodeGo(namespaceArgs, flags);
 		return;
 	}
 	if (namespace === "proxx") {
@@ -388,27 +340,16 @@ export {
 	formatTokenCount,
 	buildAccountUsageLines,
 	buildClaudeUsageLines,
-	buildFactoryUsageLines,
-	printHelpFactory,
-	printHelpFactoryQuota,
 	printHelpGrok,
 	printHelpGrokQuota,
 	buildGrokUsageLines,
 	formatGrokPeriodReset,
-	printHelpSynthetic,
-	printHelpSyntheticQuota,
-	printHelpSyntheticRemove,
-	buildSyntheticUsageLines,
-	formatSyntheticReset,
 	printHelpAntigravity,
 	printHelpAntigravityQuota,
 	buildAntigravityUsageLines,
 	formatAntigravityReset,
 	formatClaudeLabel,
-	printHelpOpenCodeGo,
-	printHelpOpenCodeGoQuota,
-	buildOpenCodeGoUsageLines,
-	formatOpenCodeGoReset,
+	formatRemovedNamespaceError,
 	redactEmail,
 	formatEmailDisplay,
 	visibleLength,
@@ -427,23 +368,10 @@ export {
 	handleClaudeReauth,
 	handleClaudeSwitch,
 	handleClaudeRemove,
-	handleFactory,
-	handleFactoryAdd,
-	handleFactorySwitch,
-	handleFactoryRemove,
-	handleFactoryList,
-	handleFactoryQuota,
 	handleGrok,
 	handleGrokQuota,
-	handleSynthetic,
-	handleSyntheticQuota,
-	handleSyntheticList,
-	handleSyntheticRemove,
 	handleAntigravity,
 	handleAntigravityQuota,
-	handleOpenCodeGo,
-	handleOpenCodeGoQuota,
-	buildOpenCodeGoJsonOutput,
 	handleQuota,
 } from "./lib/handlers.js";
 
@@ -458,62 +386,13 @@ export {
 	CLAUDE_MULTI_ACCOUNT_PATHS,
 	USAGE_URL,
 	RESET_CREDITS_URL,
-	OPENCODE_GO_DASHBOARD_BASE_URL,
-	OPENCODE_GO_TIMEOUT_MS,
+	REMOVED_NAMESPACES,
+	REMOVED_NAMESPACE_EXIT_CODE,
+	V1_COMPAT_COMMAND,
 } from "./lib/constants.js";
-
-// Factory constants (for testing)
-export {
-	FACTORY_API_BASE,
-	FACTORY_USAGE_URL,
-	FACTORY_TIMEOUT_MS,
-	FACTORY_MULTI_ACCOUNT_PATH,
-	FACTORY_AUTH_FILE_PATH,
-	FACTORY_AUTH_KEY_PATH,
-	FACTORY_OAUTH_REFRESH_BUFFER_MS,
-	FACTORY_PLAN_TIERS,
-} from "./lib/constants.js";
-
-// Factory crypto utilities (for testing)
-export {
-	decryptAuthV2,
-	encryptAuthV2,
-	generateAuthKey,
-	readAuthV2Files,
-	writeAuthV2Files,
-} from "./lib/factory-crypto.js";
-
-// Factory account utilities (for testing)
-export {
-	isValidFactoryAccount,
-	loadFactoryAccountsFromEnv,
-	loadFactoryAccountsFromFile,
-	extractFactoryProfile,
-	loadFactoryAccountFromAuthV2,
-	loadAllFactoryAccounts,
-	getFactoryActiveLabel,
-	findFactoryAccountByLabel,
-	getAllFactoryLabels,
-} from "./lib/factory-accounts.js";
-
-// Factory usage utilities (for testing)
-export {
-	computeBillingPeriod,
-	sumDailyTokens,
-	extractModelBreakdown,
-	fetchFactoryUsage,
-} from "./lib/factory-usage.js";
-
-// Factory token refresh (for testing)
-export {
-	isFactoryTokenExpiring,
-	refreshFactoryToken,
-	persistFactoryTokens,
-	ensureFreshFactoryToken,
-} from "./lib/factory-tokens.js";
 
 // Token match field maps (for testing)
-export { FACTORY_TOKEN_FIELDS, XAI_TOKEN_FIELDS, ANTIGRAVITY_TOKEN_FIELDS } from "./lib/token-match.js";
+export { XAI_TOKEN_FIELDS, ANTIGRAVITY_TOKEN_FIELDS } from "./lib/token-match.js";
 
 // Proxx exports
 export { handleProxx, handleProxxQuota } from "./lib/handlers.js";
@@ -570,24 +449,6 @@ export {
 	enrichGrokAccountFromUserinfo,
 } from "./lib/grok-usage.js";
 
-// Synthetic exports
-export {
-	SYNTHETIC_QUOTAS_URL,
-	SYNTHETIC_TIMEOUT_MS,
-	SYNTHETIC_INTEGRATION_DB_PATH,
-} from "./lib/constants.js";
-export {
-	normalizeSyntheticAccount,
-	loadSyntheticAccountsFromEnv,
-	loadSyntheticAccountsFromIntegrationDb,
-	loadAllSyntheticAccounts,
-	getSyntheticSearchLocations,
-	isSyntheticEnvSource,
-	resolveSyntheticIntegrationDbPath,
-	removeSyntheticAccountFromIntegrationDb,
-} from "./lib/synthetic-accounts.js";
-export { normalizeSyntheticQuotas, fetchSyntheticUsage } from "./lib/synthetic-usage.js";
-
 // Google AI Pro / Antigravity exports
 export {
 	ANTIGRAVITY_TOKEN_URL,
@@ -621,15 +482,6 @@ export {
 	loadAntigravityProjectId,
 	fetchAntigravityUsage,
 } from "./lib/antigravity-usage.js";
-
-// OpenCode Go dashboard exports
-export {
-	resolveOpenCodeGoDashboardConfig,
-	getOpenCodeGoSearchLocations,
-	parseOpenCodeGoResetSeconds,
-	parseOpenCodeGoDashboardHtml,
-	fetchOpenCodeGoUsage,
-} from "./lib/opencode-go-usage.js";
 
 // Env loader
 export { loadEnvFile, ENV_FILE_PATH } from "./lib/env.js";

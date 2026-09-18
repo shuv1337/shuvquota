@@ -1,8 +1,15 @@
 # shuvquota
 
+The v1 command surface remains available with `npx shuvquota@1 …` during the v2
+migration. The local `v1.1.25-final` tag preserves the pre-migration source.
+
 Multi-provider quota monitor and account manager for OpenAI Codex CLI, Claude Code,
-Factory.ai, SuperGrok, Synthetic, Google AI Pro / Antigravity, and OpenCode Go. Add, switch, list, and remove supported accounts
+SuperGrok, and Google AI Pro / Antigravity. Add, switch, list, and remove supported accounts
 with OAuth browser authentication, and inspect all configured quotas together.
+
+Factory.ai, Synthetic, and OpenCode Go support was removed in v2. Invoking those
+namespaces (`shuvquota factory …`, `shuvquota synthetic …`, `shuvquota opencode-go …`)
+exits with status 2 and points at `npx shuvquota@1`.
 
 By default, shuvquota now only reads and refreshes credentials from its own managed account files and env vars. Native app auth files from Codex CLI, OpenCode, Claude Code, and pi are no longer imported automatically, which avoids breaking those apps' tokens during refresh. Use `--native` to opt back into the old behavior when needed.
 
@@ -31,9 +38,6 @@ shuvquota codex add personal
 # Add a Claude credential (interactive)
 shuvquota claude add work
 
-# Add a Factory account (imports from Droid CLI auth.v2 files)
-shuvquota factory add work
-
 # Check quota for all accounts
 shuvquota
 
@@ -46,9 +50,6 @@ shuvquota codex switch personal
 # Switch Claude credentials
 shuvquota claude switch work
 
-# Switch Factory account
-shuvquota factory switch work
-
 # Sync activeLabel to CLI auth files
 shuvquota codex sync
 shuvquota claude sync
@@ -60,20 +61,16 @@ shuvquota claude sync --dry-run
 # List accounts
 shuvquota codex list
 shuvquota claude list
-shuvquota factory list
-shuvquota synthetic list
 
 # Remove an account
 shuvquota codex remove old-account
 shuvquota claude remove old-account
-shuvquota factory remove old-account
-shuvquota synthetic remove default
 ```
 
 ## shuvquota PWA
 
 `shuvquota` is the installable, responsive companion app for the same quota data shown by
-the CLI. It presents Codex, Claude, SuperGrok, Antigravity, and OpenCode Go usage in one
+the CLI. It presents Codex, Claude, SuperGrok, and Antigravity usage in one
 fast-scanning view.
 
 ```bash
@@ -133,32 +130,6 @@ shuvquota claude quota work      # Specific credential
 shuvquota claude quota --json    # JSON output
 ```
 
-### synthetic quota
-
-Check Synthetic rolling 5-hour tokens, weekly credits, subscription requests, and
-hourly search requests. The quota request itself does not consume quota.
-
-```bash
-shuvquota synthetic
-shuvquota synthetic quota --compact
-shuvquota synthetic quota --json
-```
-
-The API key is discovered from `SYNTHETIC_API_KEY`, `SYNTHETIC_ACCOUNTS`, or the
-Synthetic credential in shuvcode's integration-v2 database. SQLite discovery uses
-the built-in `node:sqlite` module when available; older Node versions can use an
-environment variable instead.
-
-```bash
-shuvquota synthetic list
-shuvquota synthetic remove default
-shuvquota synthetic disable default --json
-```
-
-`remove` (and the `disable` alias) deletes the matching shuvcode integration-v2
-credential. Environment-only keys cannot be removed from the CLI; edit the env
-var instead.
-
 ### antigravity quota
 
 Check Google AI Pro / Antigravity Gemini 5-hour and weekly remaining quota, plus
@@ -175,33 +146,6 @@ Credentials are discovered from `ANTIGRAVITY_REFRESH` / `ANTIGRAVITY_ACCOUNTS`,
 OAuth credential. Token refresh stays in memory and is not written back.
 Set `ANTIGRAVITY_CLIENT_ID` and `ANTIGRAVITY_CLIENT_SECRET` in `~/.shuvquota.env`
 so expired access tokens can refresh.
-
-### opencode-go quota
-
-Check the rolling 5-hour, weekly, and monthly limits shown by the authenticated
-OpenCode Go workspace dashboard:
-
-```bash
-shuvquota opencode-go quota
-shuvquota opencode-go quota --compact
-shuvquota opencode-go quota --json
-```
-
-OpenCode's production API does not currently expose Go usage to an API key, so
-this integration reads the same server-rendered page as the signed-in dashboard.
-Configure the workspace and browser session in `~/.shuvquota.env`:
-
-```dotenv
-OPENCODE_GO_WORKSPACE_ID=wrk_...
-OPENCODE_GO_AUTH_COOKIE=...
-OPENCODE_GO_LABEL=go
-```
-
-Protect the file with `chmod 600 ~/.shuvquota.env`. The label is optional and
-defaults to `go`. The HttpOnly cookie expires with the web session; if the command
-returns an authentication error, sign in at `opencode.ai` and replace the value.
-The cookie, workspace ID, response HTML, and credential source are never included
-in CLI JSON or browser API responses.
 
 ### codex add
 
@@ -335,59 +279,6 @@ shuvquota claude sync --json
 Only OAuth-based Claude accounts can be synced. Session-key-only accounts are skipped with
 a warning.
 
-### factory quota
-
-Check usage quota for Factory accounts using the Factory Analytics API.
-
-```bash
-shuvquota factory quota                # All Factory accounts
-shuvquota factory quota work           # Specific account
-shuvquota factory quota --json         # JSON output
-shuvquota factory quota --billing-day 15  # Custom billing period start day
-```
-
-The `--billing-day` flag sets the day of month when the billing period starts (defaults to 1).
-
-### factory add
-
-Import a Factory account from Droid CLI auth.v2 encrypted files.
-
-```bash
-shuvquota factory add                  # Label derived from token
-shuvquota factory add work             # With explicit label
-```
-
-Reads `~/.factory/auth.v2.file` and `~/.factory/auth.v2.key` (AES-256-GCM encrypted)
-and saves the decrypted credentials to `~/.factory-accounts.json`.
-
-### factory switch
-
-Switch the active Factory account.
-
-```bash
-shuvquota factory switch work
-```
-
-Updates `activeLabel` in `~/.factory-accounts.json` and writes back to the
-encrypted auth.v2 files.
-
-### factory list
-
-List all Factory accounts with status indicators.
-
-```bash
-shuvquota factory list
-shuvquota factory list --json
-```
-
-### factory remove
-
-Remove a Factory account from storage.
-
-```bash
-shuvquota factory remove old-account
-```
-
 ## Options
 
 | Option | Description |
@@ -396,7 +287,6 @@ shuvquota factory remove old-account
 | `--local` | Use only shuvquota-managed files; skip native app auth checks (default) |
 | `--native` | Include native app auth files in reads/checks for list/quota/divergence |
 | `--dry-run` | Preview sync without writing files |
-| `--billing-day` | Set billing period start day (1–31, default 1, Factory only) |
 | `--no-browser` | Print auth URL instead of opening browser |
 | `--no-color` | Disable colored output |
 | `--version, -v` | Show version number |
@@ -428,21 +318,6 @@ Claude sources (in order):
 | `~/.claude/.credentials.json` | Claude Code credentials (`--native` only) | Yes | Yes (`switch`, `sync`) |
 | `~/.local/share/opencode/auth.json` | OpenCode auth file (`anthropic` provider) | No | Yes (`switch`, `sync` if it exists) |
 | `~/.pi/agent/auth.json` | pi auth file (`anthropic` provider) | No | Yes (`switch`, `sync` if it exists) |
-
-Factory sources:
-
-| Source | Purpose | Read | Write |
-|--------|---------|------|-------|
-| `~/.factory-accounts.json` | Factory multi-account file | Yes | Yes (`add`, `remove`) |
-| `~/.factory/auth.v2.file` + `auth.v2.key` | Droid CLI encrypted auth (AES-256-GCM) | Yes | Yes (`switch`) |
-
-Synthetic sources (in order):
-
-| Source | Purpose | Read | Write |
-|--------|---------|------|-------|
-| `SYNTHETIC_API_KEY` env var | Single API key | Yes | No |
-| `SYNTHETIC_ACCOUNTS` env var | JSON array of labeled API keys | Yes | No |
-| `~/.local/share/opencode/opencode-integration-v2.db` | shuvcode Synthetic credential | Yes | No |
 
 Antigravity sources (in order):
 
@@ -570,7 +445,7 @@ All commands support `--json` for scripting:
 ```bash
 # Quota (combined)
 shuvquota --json
-# {"codex":[...],"claude":[...],"factory":[...],"grok":[...],"opencode-go":[...]}
+# {"codex":[...],"claude":[...],"grok":[...],"antigravity":[...],"divergence":{...}}
 
 # List (Codex)
 shuvquota codex list --json
@@ -651,15 +526,6 @@ Codex overrides:
 - `XDG_DATA_HOME` to relocate OpenCode auth paths
 - `PI_AUTH_PATH` to point to a different pi auth file
 
-Factory overrides:
-- `FACTORY_AUTH_FILE_PATH` to point to a different auth.v2.file
-- `FACTORY_AUTH_KEY_PATH` to point to a different auth.v2.key
-
-Synthetic overrides:
-- `SYNTHETIC_API_KEY` to supply one API key
-- `SYNTHETIC_ACCOUNTS` to supply labeled API keys as JSON
-- `SYNTHETIC_INTEGRATION_DB_PATH` to point to a different integration-v2 database
-
 Antigravity overrides:
 - `ANTIGRAVITY_CLIENT_ID` / `ANTIGRAVITY_CLIENT_SECRET` for in-memory token refresh
 - `ANTIGRAVITY_REFRESH` / `ANTIGRAVITY_ACCESS` to supply one Google AI Pro OAuth session
@@ -667,11 +533,6 @@ Antigravity overrides:
 - `ANTIGRAVITY_PROJECT` to set the Cloud Code project id
 - `ANTIGRAVITY_INTEGRATION_DB_PATH` to point to a different shuvcode database
 - `ANTIGRAVITY_V1_ACCOUNTS_PATH` to point to a different V1 accounts file
-
-OpenCode Go dashboard overrides:
-- `OPENCODE_GO_WORKSPACE_ID` for the workspace segment in `/workspace/<id>/go`
-- `OPENCODE_GO_AUTH_COOKIE` for the signed-in `opencode.ai` `auth` cookie
-- `OPENCODE_GO_LABEL` for the optional display label (default: `go`)
 
 Notes:
 - On Linux, cookie access requires `sqlite3` and `secret-tool` (libsecret) to decrypt cookies.

@@ -1,6 +1,0 @@
-commands:
-  install: ""
-  test: bun test
-  test_grep: bun test --grep
-  preflight: node scripts/preflight.js
-  start: node shuvquota.js
