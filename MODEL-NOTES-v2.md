@@ -9,7 +9,7 @@ task, not general model benchmarks. Excluded: Luna, Terra, and every fast varian
 | Started (PDT) | Model | Task | Outcome / evidence |
 | --- | --- | --- | --- |
 | 2026-09-18 14:50 | `cursorprox/claude-opus-5#high` | Repository-grounded migration/credential/privacy review | Completed: detailed file/line-backed review, useful migration and sequencing findings. OAuth impossibility claims require independent verification (see below). Session `ses_f497fdd4bffe3sIrVMfnNBSrIa`. |
-| 2026-09-18 14:50 | `cursorprox/gpt-5.6-sol#high` | Independent OAuth feasibility gate and TUI validation gaps | Running; session `ses_f497fc1beffesL5454DsydENX3` |
+| 2026-09-18 14:50 | `cursorprox/gpt-5.6-sol#high` | Independent OAuth feasibility gate and TUI validation gaps | Failed: delayed terminal notification reported a transport POST timeout to the Cursorprox responses endpoint. No review deliverable returned. Session `ses_f497fc1beffesL5454DsydENX3`; Grok's independent source review had already replaced this run. |
 | 2026-09-18 14:52 | `cursorprox/claude-fable-5-1#high` | Independent baseline test/preflight and regression coverage audit | Completed: independently confirmed 695 passing tests, pack success; preflight blocked only by expected dirty tree. Found obsolete-icon preflight sequencing issue and concrete coverage gaps. |
 | 2026-09-18 14:56 | `cursorprox/claude-fable-5-1#high` | Phase 1 provider removal, regression repair | Delivered: reports 337 pass/0 fail, 1,060 assertions; pack 73 files, no removed-provider artifacts. Independent Opus review pending. Preserved parent changes and stayed within assigned scope. |
 | 2026-09-18 15:20 | `cursorprox/claude-opus-5#high` | Independent Phase 1 implementation review | Passed: no blockers, reconciled deleted tests by body, 337 pass/0 fail, live server health/quota 200 with four providers. Corrected its earlier unsupported OAuth feasibility claims. |
@@ -99,9 +99,10 @@ and review findings separately from the model's claims.
 - **Gemini3.1 Pro** delivered the server/web migration, but the claimed later
   privacy fix was absent on disk. Verify its deliverables against actual source
   and tests rather than treating a completion report as evidence.
-- **Sol high** had not returned its initial protocol review by final integration;
-  Grok's independent source review unblocked the task. No assertion is made about
-  why that run did not return.
+- **Sol high** ultimately failed with a transport timeout; the terminal error
+  arrived after final integration. No review deliverable returned. Grok's
+  independent source review had already unblocked the task. This is transport
+  failure evidence, not evidence of the model's reasoning quality.
 
 These are observations from this migration, not general rankings. No Luna,
 Terra, or fast model variant was used. Gemini models named “Flash” are their
