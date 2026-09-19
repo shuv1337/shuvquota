@@ -34,7 +34,7 @@
 - [x] Non-TTY fallback and `NO_COLOR`
 - [x] Managed refresh serialization; external stores byte-for-byte unchanged
 - [x] Server privacy, host checks, cache, and single-flight regressions
-- [ ] `bun run preflight`
+- [x] `bun run preflight`
 - [x] `bun run release:pack`
 
 OAuth feasibility evidence and model-specific outcomes are recorded separately.
@@ -104,3 +104,6 @@ the shared-snapshot integration; this does not mark Phase 4 complete.
   discovery could suppress local accounts/sources. Both discovery paths now catch
   optional remote failures and retain local results; regression covers malformed
   base URLs and injected throwing clients. Full suite passed after this fix.
+- Integrated migration committed as `2c353b3f`. Post-commit `bun run preflight`
+  passed all five checks, including clean tree. `bun run release:pack` was rerun
+  successfully after the final proxx fix. No package was published or pushed.
