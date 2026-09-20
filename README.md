@@ -91,6 +91,13 @@ independent enrollment with `cq <provider> add`. Shuvquota does not refresh thes
 external sessions. `cq sources` lists every physical source, including duplicates;
 quota views deduplicate account identities and prefer managed labels.
 
+If you have exactly one account for a provider but older sessions lack matching
+identity metadata, set `SHUVQUOTA_SINGLE_ACCOUNT_PROVIDERS=claude,antigravity` in
+`~/.shuvquota.env` (list only providers where this is true). Quota views select one
+session per listed provider, preferring an independently managed session or a
+usable access token over expired copies. `cq sources` still lists every source.
+Remove a provider from this setting when you add a second account.
+
 `cq accounts` prints labels and ownership status, never credentials.
 `cq sources --json` intentionally includes source paths; quota JSON and the web API
 do not.
