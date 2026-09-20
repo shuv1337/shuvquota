@@ -35,7 +35,7 @@ test("Grok permission denial survives the public projection as an actionable err
 	const result = await fetchGrokUsage({ accessToken: "fixture-grok-token" }, {
 		fetchFn: async () => Response.json({ error: "User does not have Grok Code CLI permission" }, { status: 403 }),
 	});
-	expect(result.error).toBe("Grok Code CLI access is not enabled for this account");
+	expect(result.error).toBe("This Grok session lacks Code CLI access");
 	const account = normalizeGrokAccount({ label: "work" }, { error: result.error });
 	const publicSnapshot = toPublicSnapshot({ providers: [{ id: "grok", accounts: [account] }] });
 	expect(publicSnapshot.providers[0].accounts[0].error).toBe(result.error);

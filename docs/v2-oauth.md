@@ -27,6 +27,16 @@ managed sessions; all discovered external sessions remain read-only.
 
 ## Grok / xAI
 
+Live follow-up: a managed OAuth session received a Code CLI permission denial
+from billing while the native Grok Build OIDC session for the same verified user
+ID received HTTP200 at the identical endpoint. Treat that denial as session-level
+evidence, not proof the account lacks access. The native `auth.json` stores OIDC
+records with `key`, `refresh_token`, `expires_at`, and `user_id`; these are now
+read-only discovery sources. A valid same-account session can supply quota after
+a managed-session permission denial, without copying or refreshing its tokens.
+The precise authorization difference between the two issued sessions remains
+unverified; this fallback does not establish parity of the enrollment flows.
+
 Local source: `opencode/packages/opencode/src/plugin/xai.ts` and its plugin tests;
 device-code alternatives exist in pi/shuvpi `packages/ai/src/auth/oauth/xai.ts`
 and Hermes `hermes_cli/auth_xai.py`.

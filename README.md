@@ -53,8 +53,11 @@ shows a stale marker; individual account failures appear on their own cards.
 
 When Anthropic rate-limits quota reads, Claude waits at least five minutes (or a
 longer `Retry-After`) before another request. The card shows the remaining wait.
-Grok quota requires Grok Code CLI permission; OAuth sign-in or a SuperGrok plan
-alone does not establish that permission. A provider denial is shown explicitly.
+Grok quota access can differ between OAuth sessions for the same account. Native
+Grok Build sessions in `~/.grok/auth.json` (or `$GROK_HOME/auth.json`) are discovered
+read-only. If a managed session gets a Code CLI permission denial, shuvquota can
+query another unexpired session with the same verified account ID. It never
+refreshes or modifies the native session. The quota card marks that fallback.
 
 ## Managed accounts
 
