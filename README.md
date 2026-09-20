@@ -51,6 +51,11 @@ watch aliases. Use `--once` to force one-shot output. Redirected input or output
 falls back to a static view. A failed scan preserves the last completed view and
 shows a stale marker; individual account failures appear on their own cards.
 
+When Anthropic rate-limits quota reads, Claude waits at least five minutes (or a
+longer `Retry-After`) before another request. The card shows the remaining wait.
+Grok quota requires Grok Code CLI permission; OAuth sign-in or a SuperGrok plan
+alone does not establish that permission. A provider denial is shown explicitly.
+
 ## Managed accounts
 
 Every provider supports the same commands:
