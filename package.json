@@ -21,6 +21,7 @@
   ],
   "bin": {
     "cq": "./shuvquota.js",
+    "sq": "./shuvquota.js",
     "shuvquota": "./shuvquota.js",
     "shuvquota-server": "./shuvquota-server.js"
   },

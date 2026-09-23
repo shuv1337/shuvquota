@@ -15,7 +15,7 @@ npm install -g shuvquota
 bun add -g shuvquota
 ```
 
-Both `cq` and `shuvquota` are installed.
+`shuvquota` is also installed as `cq` and `sq`.
 
 ## Quick start
 

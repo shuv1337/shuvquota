@@ -212,6 +212,11 @@ describe("package.json metadata", () => {
 		expect(pkg.bin["cq"]).toBe("./shuvquota.js");
 	});
 
+	test("bin includes 'sq' alias", () => {
+		expect(pkg.bin).toHaveProperty("sq");
+		expect(pkg.bin["sq"]).toBe("./shuvquota.js");
+	});
+
 	test("bin includes 'shuvquota-server' app command", () => {
 		expect(pkg.bin).toHaveProperty("shuvquota-server");
 		expect(pkg.bin["shuvquota-server"]).toBe("./shuvquota-server.js");
