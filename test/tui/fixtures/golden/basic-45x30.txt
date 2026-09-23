@@ -1,8 +1,27 @@
-provider     account       quota
-─────────────────────────────────────────────
-Codex        personal      error: HTTP 401 u…
-Codex        work          5h 100% · wk 7%
-Claude       main 👩‍💻       sess 64% · wk 41%…
-SuperGrok    —             error: token refr…
-Antigravity  pending       loading…
-Antigravity  日本語ラベル  5h 88% · wk 15%
+╭─ Codex  personal · Free ──────────────────╮
+│ ✕ HTTP 401 unauthorized                   │
+╰───────────────────────────────────────────╯
+
+╭─ Codex  work · Plus ─── s***@example.org ─╮
+│ 5h       ━━━━━━━━━━━━━━━━━━  100%  4h 59m │
+│ Weekly   ━╸────────────────    7%      7d │
+╰─ credits 12 ──────────────────────────────╯
+
+╭─ Claude  main 👩‍💻 · Max 20x ───────────────╮
+│ Session  ━━━━━━━━━━━╸──────   64%  3h 15m │
+│ Weekly   ━━━━━━━╸──────────   41%  4d 22h │
+│ Sonnet   ──────────────────   --%         │
+╰─ org acme ────────────────────────────────╯
+
+╭─ SuperGrok ───────────────────────────────╮
+│ ✕ token refresh failed: invalid_grant     │
+╰───────────────────────────────────────────╯
+
+╭─ Antigravity  pending ────────────────────╮
+│ ⠋ loading…                                │
+╰───────────────────────────────────────────╯
+
+╭─ Antigravity  日本語ラベル ───────────────╮
+│ 5h       ━━━━━━━━━━━━━━━━──   88%  2h 30m │
+│ Weekly   ━━╸───────────────   15%  2d 12h │
+╰───────────────────────────────────────────╯

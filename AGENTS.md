@@ -41,7 +41,8 @@ validation evidence is in `docs/v2-validation.md`; model outcomes are in
 | Read-only discovery / raw provider HTTP | `lib/*-accounts.js`, `lib/*-usage.js`, `lib/*-tokens.js` |
 | Normalization and public/display projection | `lib/snapshot.js` |
 | Parallel discovery/fetch/single-flight | `lib/quota.js` |
-| Width/layout/rendering | `lib/tui/{width,layout,render}.js` |
+| Width/layout/rendering (one-shot cards and list) | `lib/tui/{width,layout,render}.js` |
+| Watch shell (cell canvas, sidebar, detail pane) | `lib/tui/{canvas,shell}.js` |
 | Watch state / terminal lifecycle | `lib/tui/{app,terminal}.js` |
 | HTTP boundary / static serving | `lib/shuvquota-server.js` |
 | Dashboard | `web/` |

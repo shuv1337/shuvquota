@@ -163,12 +163,13 @@ describe("formatPercent / percentTone / formatBar", () => {
 		expect(percentTone(NaN)).toBe("none");
 	});
 
-	test("bar geometry is exact and uses only single-cell glyphs", () => {
-		expect(formatBar(50, 10)).toBe("█████░░░░░");
-		expect(formatBar(100, 8)).toBe("████████");
-		expect(formatBar(0, 8)).toBe("░░░░░░░░");
-		expect(formatBar(null, 8)).toBe("░░░░░░░░");
-		expect(formatBar(33, 9)).toBe("███░░░░░░");
+	test("bar geometry is exact, half-cell precise, and uses only single-cell glyphs", () => {
+		expect(formatBar(50, 10)).toBe("━━━━━─────");
+		expect(formatBar(55, 10)).toBe("━━━━━╸────");
+		expect(formatBar(100, 8)).toBe("━━━━━━━━");
+		expect(formatBar(0, 8)).toBe("────────");
+		expect(formatBar(null, 8)).toBe("────────");
+		expect(formatBar(33, 9)).toBe("━━━──────");
 		for (const width of [0, 1, 8, 30]) {
 			expect(cellWidth(formatBar(64, width))).toBe(width);
 		}
@@ -178,9 +179,10 @@ describe("formatPercent / percentTone / formatBar", () => {
 
 	test("barWidthFor clamps to [BAR_MIN_WIDTH, BAR_MAX_WIDTH]", () => {
 		expect(BAR_MIN_WIDTH).toBe(8);
-		expect(BAR_MAX_WIDTH).toBe(30);
-		expect(barWidthFor(44, 6, 16)).toBe(44 - 12 - 17);
-		expect(barWidthFor(200, 6, 16)).toBe(30);
+		expect(BAR_MAX_WIDTH).toBe(56);
+		// label + 2 + bar + 2 + percent(4) + 2 + tail
+		expect(barWidthFor(44, 6, 16)).toBe(44 - 14 - 18);
+		expect(barWidthFor(200, 6, 16)).toBe(56);
 		expect(barWidthFor(20, 6, 16)).toBe(8);
 		expect(barWidthFor(44, 6, 0)).toBe(30);
 	});
@@ -221,51 +223,51 @@ describe("windowLine", () => {
 	const weekly = { id: "weekly", label: "Weekly", percentRemaining: 41, resetsAt: "2026-09-22T17:00:00Z" };
 	const unknown = { id: "x", label: "Sonnet", percentRemaining: null, resetsAt: null };
 
-	test("tier 3 keeps label, bar, percent, and long reset within innerWidth", () => {
+	test("tier 3 keeps label, bar, percent, countdown, and clock within innerWidth", () => {
 		const line = windowLine(weekly, { ...ctx, tier: 3 });
-		// barWidthFor(44, 6, 16) = 44 − 12 − 17 = 15; 41% of 15 → 6 filled.
-		expect(line).toBe("Weekly ██████░░░░░░░░░  41% resets 10:00 Tue");
+		// 44 − label 6 − gaps 8 − percent 4 − countdown 6 − clock 9 = bar 11; 41% of 22 halves → 4½.
+		expect(line).toBe("Weekly  ━━━━╸──────   41%  4d 22h  Tue 10:00");
 		expect(cellWidth(line)).toBe(44);
 	});
 
-	test("tier 2 uses short resets", () => {
-		// barWidthFor(36, 6, 9) = 36 − 12 − 10 = 14; 41% of 14 → 6 filled.
+	test("tier 2 drops the clock and widens the bar", () => {
 		const line = windowLine(weekly, { ...ctx, tier: 2, innerWidth: 36 });
-		expect(line).toBe("Weekly ██████░░░░░░░░  41% resets 4d");
+		expect(line).toBe("Weekly  ━━━━━╸────────   41%  4d 22h");
 		expect(cellWidth(line)).toBe(36);
 	});
 
-	test("tier 1 drops the bar but keeps percent and reset", () => {
-		expect(windowLine(weekly, { ...ctx, tier: 1, innerWidth: 28 })).toBe("Weekly  41%  resets 4d");
-		expect(windowLine(unknown, { ...ctx, tier: 1, innerWidth: 28 })).toBe("Sonnet  --%");
+	test("tier 1 drops the bar but keeps percent and countdown", () => {
+		expect(windowLine(weekly, { ...ctx, tier: 1, innerWidth: 28 })).toBe("Weekly   41%  4d 22h");
+		expect(windowLine(unknown, { ...ctx, tier: 1, innerWidth: 28 })).toBe("Sonnet   --%");
 	});
 
 	test("unknown percent renders --% with an empty bar", () => {
 		const line = windowLine(unknown, { ...ctx, tier: 3 });
 		expect(line).toContain("--%");
-		expect(line).not.toContain("█");
+		expect(line).not.toContain("━");
 	});
 
 	test("percent text survives at the minimum widths; the reset tail gives way first", () => {
 		for (const [tier, innerWidth] of [[3, 40], [2, 32], [1, 24]]) {
 			for (const window of [weekly, { ...weekly, percentRemaining: 100 }, unknown]) {
-				const line = windowLine(window, { ...ctx, tier, innerWidth, labelWidth: 8 });
+				const line = windowLine(window, { ...ctx, tier, innerWidth });
 				expect(cellWidth(line)).toBeLessThanOrEqual(innerWidth);
 				expect(line).toContain(formatPercent(window.percentRemaining));
 			}
 		}
 	});
 
-	test("shared barWidth is honoured when supplied", () => {
-		const line = windowLine(weekly, { ...ctx, tier: 3, barWidth: 10 });
-		expect(line).toContain("████░░░░░░ ");
+	test("shared column geometry is honoured when supplied", () => {
+		const line = windowLine(weekly, { ...ctx, tier: 3, labelWidth: 6, barWidth: 10, relWidth: 6, clockWidth: 0 });
+		expect(line).toBe("Weekly  ━━━━──────   41%  4d 22h");
 	});
 
-	test("colour wraps only the bar+percent segment and never changes width", () => {
+	test("colour styles bar, percent, and clock without changing width", () => {
 		const plain = windowLine(weekly, { ...ctx, tier: 3 });
 		const colored = windowLine(weekly, { ...ctx, tier: 3, color: true });
 		expect(stripAnsi(colored)).toBe(plain);
 		expect(colored).toContain("\x1b[33m");
+		expect(colored).toContain("\x1b[1;33m");
 		expect(cellWidth(colored)).toBe(cellWidth(plain));
 	});
 });
@@ -296,29 +298,36 @@ describe("renderCard", () => {
 
 	test("bars inside one card share a width so the percent column aligns", () => {
 		const lines = renderCard(byKey["claude:main 👩‍💻"], { tier: 3, width: 59, now: NOW });
-		const bodies = lines.slice(2, 5);
-		const barLengths = bodies.map(line => (line.match(/[█░]+/) ?? [""])[0].length);
+		const bodies = lines.slice(1, 4);
+		const barLengths = bodies.map(line => (line.match(/[━╸─]+/) ?? [""])[0].length);
 		expect(new Set(barLengths).size).toBe(1);
 		const pctColumns = bodies.map(line => line.indexOf("%"));
 		expect(new Set(pctColumns).size).toBe(1);
 	});
 
 	test("error, loading, provider-error, and empty states are visible", () => {
-		expect(renderCard(byKey["codex:personal"], { tier: 3, width: 48, now: NOW })[2]).toContain("error: HTTP 401 unauthorized");
-		expect(renderCard(byKey["antigravity:pending"], { tier: 3, width: 48, now: NOW })[2]).toContain("loading…");
-		expect(renderCard(byKey["grok:"], { tier: 3, width: 48, now: NOW })[2]).toContain("error: token refresh failed: invalid_grant");
+		expect(renderCard(byKey["codex:personal"], { tier: 3, width: 48, now: NOW })[1]).toContain("✕ HTTP 401 unauthorized");
+		expect(renderCard(byKey["antigravity:pending"], { tier: 3, width: 48, now: NOW })[1]).toContain("loading…");
+		expect(renderCard(byKey["grok:"], { tier: 3, width: 48, now: NOW })[1]).toContain("✕ token refresh failed: invalid_grant");
 		const [empty] = computeLayout({ providers: [{ id: "claude", name: "Claude" }] }, { cols: 80 }).cards;
-		expect(renderCard(empty, { tier: 3, width: 48, now: NOW })[2]).toContain("no accounts");
+		expect(renderCard(empty, { tier: 3, width: 48, now: NOW })[1]).toContain("no accounts");
 		const [noWindows] = computeLayout({ providers: [{ id: "claude", accounts: [{ label: "x" }] }] }, { cols: 80 }).cards;
-		expect(renderCard(noWindows, { tier: 3, width: 48, now: NOW })[2]).toContain("no quota windows");
+		expect(renderCard(noWindows, { tier: 3, width: 48, now: NOW })[1]).toContain("no quota windows");
 	});
 
-	test("extras appear only when showExtras is set", () => {
+	test("the title sits in the top border and drops email before the label", () => {
+		const work = byKey["codex:work"];
+		expect(renderCard(work, { tier: 3, width: 48, now: NOW })[0]).toBe("╭─ Codex  work · Plus ────── s***@example.org ─╮");
+		expect(renderCard(work, { tier: 3, width: 30, now: NOW })[0]).toBe("╭─ Codex  work · Plus ───────╮");
+		expect(renderCard(work, { tier: 3, width: 14, now: NOW })[0]).toBe("╭─ Codex  w…─╮");
+	});
+
+	test("extras appear in the bottom border only when showExtras is set", () => {
 		const with_ = renderCard(byKey["codex:work"], { tier: 3, width: 48, showExtras: true, now: NOW });
 		const without = renderCard(byKey["codex:work"], { tier: 3, width: 48, showExtras: false, now: NOW });
-		expect(with_.join("\n")).toContain("credits: 12");
+		expect(with_.at(-1)).toBe(`╰─ credits 12 ${"─".repeat(33)}╯`);
 		expect(without.join("\n")).not.toContain("credits");
-		expect(with_.length - without.length).toBe(1);
+		expect(with_.length).toBe(without.length);
 	});
 
 	test("explicit height pads or truncates deterministically", () => {
@@ -350,16 +359,25 @@ describe("renderTable (tier 0)", () => {
 		expect(tableLabel("Opus 4.1 long")).toBe("Opu…");
 	});
 
-	test("emits header, rule, and one row per card within the column bound", () => {
-		const layout = computeLayout(BASIC, { cols: 27, rows: 40 });
+	test("emits one line per window, naming provider and account once per group", () => {
+		const layout = computeLayout(BASIC, { cols: 80, rows: 10 });
+		expect(layout.tier).toBe(0);
 		const lines = renderTable(layout, { now: NOW });
 		expect(lines).toHaveLength(layout.totalHeight);
-		// Narrow columns use short header labels rather than truncating "provider" to "provi…".
-		expect(lines[0]).toMatch(/^(provider|prov)\s+(account|acct)\s+quota/);
-		expect(lines[0]).not.toContain("…");
-		expect(lines[1]).toMatch(/^─+$/);
+		expectBounded(lines, 80);
+		expect(lines[1]).toMatch(/^\s+work\s+5h\s+━+\s+100%\s+4h 59m$/);
+		expect(lines[2]).toMatch(/^\s+Weekly\s+━+─+\s+7%\s+7d$/);
+		expect(lines[0]).toMatch(/^ Codex\s+personal\s+✕ HTTP 401 unauthorized$/);
+		// Bars and percents align across every window row.
+		const pct = lines.filter(line => line.includes("%")).map(line => cellWidth(line.slice(0, line.indexOf("%"))));
+		expect(new Set(pct).size).toBe(1);
+	});
+
+	test("narrow lists abbreviate labels and drop the countdown instead of cutting it", () => {
+		const lines = renderTable(computeLayout(BASIC, { cols: 27, rows: 40 }), { now: NOW });
 		expectBounded(lines, 27);
-		expect(lines.slice(2).some(line => line.includes("error"))).toBe(true);
+		expect(lines[1]).toMatch(/5h\s+100%$/);
+		expect(lines[2]).toMatch(/wk\s+7%$/);
 	});
 
 	test("empty snapshot renders a single message", () => {
@@ -380,13 +398,13 @@ describe("renderLayout / renderView", () => {
 	});
 
 	test("renderView slices to the viewport and reports an indicator", () => {
-		// 12 accounts at 80×12 fall to the tier-0 table (14 lines) and scroll.
+		// 12 accounts at 80×12 fall to the tier-0 list (24 lines) and scroll.
 		const layout = computeLayout(manyAccounts(12), { cols: 80, rows: 12, scroll: 1 });
 		expect(layout.tier).toBe(0);
 		const view = renderView(layout, { now: NOW });
 		expect(view.lines).toHaveLength(12);
 		expect(view.lines).toEqual(renderLayout(layout, { now: NOW }).slice(1, 13));
-		expect(view.indicator).toBe("↑1 ↓1");
+		expect(view.indicator).toBe("↑1 ↓11");
 		expect(view.viewport.offset).toBe(1);
 	});
 
@@ -445,17 +463,17 @@ describe("renderStatic goldens", () => {
 		expectGolden("basic-80xinf", out);
 	});
 
-	test("12 accounts at 80×12: tier-0 table, full content (scrolling is the app's job)", () => {
+	test("12 accounts at 80×12: tier-0 list, full content (scrolling is the app's job)", () => {
 		const snapshot = manyAccounts(12);
 		const layout = computeLayout(snapshot, { cols: 80, rows: 12 });
 		expect(layout.tier).toBe(0);
 		const out = renderStatic(snapshot, { cols: 80, rows: 12, now: NOW });
-		expect(out).toHaveLength(14);
+		expect(out).toHaveLength(24);
 		expectBounded(out, 80);
 		expectGolden("many-80x12", out);
 		const view = renderView(computeLayout(snapshot, { cols: 80, rows: 12, scroll: 30 }), { now: NOW });
 		expect(view.lines).toHaveLength(12);
-		expect(view.viewport.offset).toBe(2); // clamped from 30
+		expect(view.viewport.offset).toBe(12); // clamped from 30 (24 lines − 12 visible)
 		expectGolden("many-80x12-view-scroll30", `${view.lines.join("\n")}\n[${view.indicator}]`);
 	});
 

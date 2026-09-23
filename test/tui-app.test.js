@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createAppState, completeScan, renderFrame, runWatch } from "../lib/tui/app.js";
+import { DEFAULT_INTERVAL, createAppState, completeScan, renderFrame, runWatch } from "../lib/tui/app.js";
 import { cellWidth } from "../lib/tui/width.js";
 
 const providers = [{ id: "codex", name: "Codex" }];
@@ -8,6 +8,10 @@ const snapshot = status => ({ schemaVersion: 2, generatedAt: "2026-09-18T20:00:0
 		plan: null, windows: [] }] }] });
 
 describe("watch app", () => {
+	test("refreshes every 3 minutes by default", () => {
+		expect(DEFAULT_INTERVAL).toBe(180);
+		expect(createAppState({ providers }).interval).toBe(180);
+	});
 	test("completed and successful timestamps are distinct", () => {
 		const state = createAppState({ providers });
 		completeScan(state, snapshot("error"), 1000);

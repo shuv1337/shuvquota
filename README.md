@@ -29,8 +29,16 @@ cq --compact               # one line per metric
 cq --json                  # redacted v2 snapshot
 ```
 
-Bare `cq` always runs once. Cards fill the available terminal width; short or
-narrow terminals fall back to compact rows and scrolling in watch mode.
+Bare `cq` always runs once. Cards fill the available terminal width; short
+terminals try more, narrower columns, then fall back to one aligned line per
+quota window.
+
+`cq watch` is a full-screen app: provider tabs across the top, an account
+sidebar with each account's lowest remaining quota, a detail pane for the
+selected account (limits with reset countdowns, then details), and a status
+bar. Press `u` to list the soonest upcoming resets across all accounts.
+Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
+`--no-color` or `NO_COLOR` renders the same layout without colour.
 
 ### Watch controls
 
@@ -38,15 +46,16 @@ narrow terminals fall back to compact rows and scrolling in watch mode.
 | --- | --- |
 | `q`, Ctrl-C | Quit and restore the terminal |
 | `r` | Refresh now |
+| `u` | Show or hide upcoming resets across all accounts |
 | `e` | Toggle email visibility |
 | `?` | Toggle help |
 | `1` | All providers |
 | `2`–`5` | Codex, Claude, Grok, Antigravity |
-| `j`/`k`, arrows | Scroll |
-| PgUp/PgDn | Scroll a page |
+| `j`/`k`, arrows | Select the next/previous account |
+| PgUp/PgDn | Jump several accounts |
 | `+`/`-` | Increase/decrease refresh interval by 15 seconds |
 
-The default interval is 60 seconds; the minimum is 15. `cq tui` and `cq -w` are
+The default interval is 3 minutes (180 seconds); the minimum is 15. `cq tui` and `cq -w` are
 watch aliases. Use `--once` to force one-shot output. Redirected input or output
 falls back to a static view. A failed scan preserves the last completed view and
 shows a stale marker; individual account failures appear on their own cards.

@@ -85,8 +85,9 @@ describe("terminal lifecycle", () => {
 		const { terminal, output } = fixture();
 		terminal.start();
 		terminal.write(["x".repeat(80)]);
-		expect(output.text.endsWith("x".repeat(80))).toBe(true);
-		expect(output.text).toContain(`\x1b[H\x1b[2J${"x".repeat(80)}`);
+		// Only the synchronized-update terminator follows the final cell.
+		expect(output.text.endsWith(`${"x".repeat(80)}\x1b[?2026l`)).toBe(true);
+		expect(output.text).toContain(`\x1b[?2026h\x1b[H\x1b[2J${"x".repeat(80)}`);
 		terminal.stop();
 	});
 });

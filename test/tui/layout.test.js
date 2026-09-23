@@ -15,6 +15,7 @@ import {
 	TIER_MIN_WIDTH,
 	MIN_CARD_WIDTH,
 	TABLE_HEADER_HEIGHT,
+	listRowCount,
 	CARD_CHROME_HEIGHT,
 	MAX_TEXT_LENGTH,
 	normalizeSnapshot,
@@ -62,8 +63,8 @@ describe("constants", () => {
 		expect(TARGET_CARD_WIDTH).toBe(48);
 		expect(TIER_MIN_WIDTH).toEqual({ 3: 44, 2: 36, 1: 28 });
 		expect(MIN_CARD_WIDTH).toBe(28);
-		expect(TABLE_HEADER_HEIGHT).toBe(2);
-		expect(CARD_CHROME_HEIGHT).toBe(3);
+		expect(TABLE_HEADER_HEIGHT).toBe(0);
+		expect(CARD_CHROME_HEIGHT).toBe(2);
 	});
 });
 
@@ -253,26 +254,27 @@ describe("cardHeight", () => {
 	const cards = buildCards(normalizeSnapshot(BASIC));
 	const byKey = Object.fromEntries(cards.map(c => [c.key, c]));
 
-	test("tier 0 is one line per card", () => {
-		for (const card of cards) expect(cardHeight(card, 0, true)).toBe(1);
+	test("tier 0 is one list line per window (one for message cards)", () => {
+		expect(cards.map(card => cardHeight(card, 0, true))).toEqual([1, 2, 3, 1, 1, 2]);
+		expect(cards.map(listRowCount)).toEqual([1, 2, 3, 1, 1, 2]);
 	});
 
-	test("ok account: chrome + one line per window (+ extras when shown)", () => {
-		expect(cardHeight(byKey["codex:work"], 3, false)).toBe(3 + 2);
-		expect(cardHeight(byKey["codex:work"], 3, true)).toBe(3 + 2 + 1);
-		expect(cardHeight(byKey["claude:main 👩‍💻"], 2, false)).toBe(3 + 3);
-		expect(cardHeight(byKey["claude:main 👩‍💻"], 3, true)).toBe(3 + 3 + 1);
+	test("ok account: chrome + one line per window; extras live in the border", () => {
+		expect(cardHeight(byKey["codex:work"], 3, false)).toBe(2 + 2);
+		expect(cardHeight(byKey["codex:work"], 3, true)).toBe(2 + 2);
+		expect(cardHeight(byKey["claude:main 👩‍💻"], 2, false)).toBe(2 + 3);
+		expect(cardHeight(byKey["claude:main 👩‍💻"], 3, true)).toBe(2 + 3);
 	});
 
 	test("error, loading, and provider cards are chrome + one message line", () => {
-		expect(cardHeight(byKey["codex:personal"], 3, true)).toBe(4);
-		expect(cardHeight(byKey["antigravity:pending"], 3, true)).toBe(4);
-		expect(cardHeight(byKey["grok:"], 3, true)).toBe(4);
+		expect(cardHeight(byKey["codex:personal"], 3, true)).toBe(3);
+		expect(cardHeight(byKey["antigravity:pending"], 3, true)).toBe(3);
+		expect(cardHeight(byKey["grok:"], 3, true)).toBe(3);
 	});
 
 	test("ok account with no windows still reserves one body line", () => {
 		const [card] = buildCards(normalizeSnapshot({ providers: [{ id: "codex", accounts: [{ label: "x" }] }] }));
-		expect(cardHeight(card, 3, false)).toBe(4);
+		expect(cardHeight(card, 3, false)).toBe(3);
 	});
 });
 
@@ -298,32 +300,32 @@ describe("computeLayout", () => {
 		expect(layout.placed).toHaveLength(6);
 		expect(layout.placed.map(p => [p.row, p.col])).toEqual([[0, 0], [0, 1], [0, 2], [0, 3], [1, 0], [1, 1]]);
 		expect(layout.placed.map(p => p.x)).toEqual([0, 50, 100, 150, 0, 50]);
-		// Row 0 tallest card is Claude (3 windows + 1 extra + chrome = 7).
-		expect(layout.placed[0].rowHeight).toBe(7);
-		expect(layout.placed[4].y).toBe(7 + ROW_GAP);
-		expect(layout.totalHeight).toBe(7 + 1 + 5);
+		// Row 0 tallest card is Claude (3 windows + chrome = 5).
+		expect(layout.placed[0].rowHeight).toBe(5);
+		expect(layout.placed[4].y).toBe(5 + ROW_GAP);
+		expect(layout.totalHeight).toBe(5 + 1 + 4);
 	});
 
 	test("120×40: 2 columns, tier 3 with extras", () => {
 		const layout = computeLayout(BASIC, { cols: 120, rows: 40 });
-		expect(layout).toMatchObject({ columns: 2, cardWidth: 59, tier: 3, showExtras: true, fits: true, totalHeight: 20 });
+		expect(layout).toMatchObject({ columns: 2, cardWidth: 59, tier: 3, showExtras: true, fits: true, totalHeight: 15 });
 	});
 
-	test("80×24: falls through tiers 3→2→1 (33 lines each, too tall) to the tier-0 table, which fits", () => {
+	test("80×24: one column is too tall, so two narrower tier-2 columns are used", () => {
 		const layout = computeLayout(BASIC, { cols: 80, rows: 24 });
-		expect(layout).toMatchObject({ columns: 1, cardWidth: 80, tier: 0, showExtras: false, fits: true, totalHeight: TABLE_HEADER_HEIGHT + 6 });
+		expect(layout).toMatchObject({ columns: 2, cardWidth: 39, tier: 2, showExtras: false, fits: true, totalHeight: 15 });
 		expect(layout.viewport).toEqual({ offset: 0, maxOffset: 0, visibleRows: 24, hiddenAbove: 0, hiddenBelow: 0 });
 	});
 
-	test("height fallback order is tier3+extras → tier3 → tier2 → tier1 → tier0 → scroll (§3.3)", () => {
-		// 60 cols: single column, tier-3 capable. Heights: t3+extras 35, t3/t2/t1 33, t0 8.
+	test("height fallback: tier3 → more columns → tier2 → tier1 → tier0 list → scroll (§3.3)", () => {
+		// 60 cols: one tier-3 column is 27 lines; two tier-1 columns are 15; the list is 10.
 		const expectations = [
-			[35, { tier: 3, showExtras: true, fits: true }],
-			[34, { tier: 3, showExtras: false, fits: true }],
-			[33, { tier: 3, showExtras: false, fits: true }],
-			[32, { tier: 0, showExtras: false, fits: true, totalHeight: 8 }],
-			[8, { tier: 0, fits: true, totalHeight: 8 }],
-			[7, { tier: 0, fits: false, totalHeight: 8 }],
+			[27, { columns: 1, tier: 3, showExtras: true, fits: true, totalHeight: 27 }],
+			[26, { columns: 2, cardWidth: 29, tier: 1, fits: true, totalHeight: 15 }],
+			[15, { columns: 2, tier: 1, fits: true }],
+			[14, { columns: 1, tier: 0, fits: true, totalHeight: 10 }],
+			[10, { tier: 0, fits: true, totalHeight: 10 }],
+			[9, { tier: 0, fits: false, totalHeight: 10 }],
 		];
 		for (const [rows, expected] of expectations) {
 			expect(computeLayout(BASIC, { cols: 60, rows })).toMatchObject(expected);
@@ -339,16 +341,15 @@ describe("computeLayout", () => {
 				})),
 			}],
 		};
-		// 3 cards × 4 lines + 2 gaps = 14 at every card tier; only extras change height (17).
-		expect(computeLayout(snapshot, { cols: 48, rows: 17 })).toMatchObject({ tier: 3, showExtras: true });
-		expect(computeLayout(snapshot, { cols: 48, rows: 14 })).toMatchObject({ tier: 3, showExtras: false });
-		expect(computeLayout(snapshot, { cols: 48, rows: 13 })).toMatchObject({ tier: 0, fits: true, totalHeight: 5 });
-		expect(computeLayout(snapshot, { cols: 40, rows: 14 })).toMatchObject({ tier: 2, fits: true });
-		expect(computeLayout(snapshot, { cols: 30, rows: 14 })).toMatchObject({ tier: 1, fits: true });
-		expect(computeLayout(snapshot, { cols: 30, rows: 13 })).toMatchObject({ tier: 0, fits: true });
-		// Scrolling only begins once even the tier-0 table overflows.
-		expect(computeLayout(snapshot, { cols: 30, rows: 4 })).toMatchObject({ tier: 0, fits: false, totalHeight: 5 });
-		expect(computeLayout(snapshot, { cols: 30, rows: 4 }).viewport.maxOffset).toBe(1);
+		// 3 cards × 3 lines + 2 gaps = 11 at every card tier.
+		expect(computeLayout(snapshot, { cols: 48, rows: 11 })).toMatchObject({ tier: 3, showExtras: true });
+		expect(computeLayout(snapshot, { cols: 48, rows: 10 })).toMatchObject({ tier: 0, fits: true, totalHeight: 3 });
+		expect(computeLayout(snapshot, { cols: 40, rows: 11 })).toMatchObject({ tier: 2, fits: true });
+		expect(computeLayout(snapshot, { cols: 30, rows: 11 })).toMatchObject({ tier: 1, fits: true });
+		expect(computeLayout(snapshot, { cols: 30, rows: 10 })).toMatchObject({ tier: 0, fits: true });
+		// Scrolling only begins once even the tier-0 list overflows.
+		expect(computeLayout(snapshot, { cols: 30, rows: 2 })).toMatchObject({ tier: 0, fits: false, totalHeight: 3 });
+		expect(computeLayout(snapshot, { cols: 30, rows: 2 }).viewport.maxOffset).toBe(1);
 	});
 
 	test("80 columns with unbounded rows keeps tier 3", () => {
@@ -357,33 +358,30 @@ describe("computeLayout", () => {
 		expect(layout.viewport.maxOffset).toBe(0);
 	});
 
-	test("height fallback drops extras before dropping a tier", () => {
-		// 60 cols → 1 column tier-3 capable. Tier 3 + extras = 33 + 2 = 35 lines; tier 3 = 33.
-		const withExtras = computeLayout(BASIC, { cols: 60, rows: 35 });
-		expect(withExtras).toMatchObject({ tier: 3, showExtras: true, fits: true });
-		const noExtras = computeLayout(BASIC, { cols: 60, rows: 34 });
-		expect(noExtras).toMatchObject({ tier: 3, showExtras: false, fits: true, totalHeight: 33 });
+	test("extras never add height (they render in the bottom border)", () => {
+		const layout = computeLayout(BASIC, { cols: 60, rows: 27 });
+		expect(layout).toMatchObject({ tier: 3, showExtras: true, fits: true, totalHeight: 27 });
 	});
 
-	test("width below MIN_CARD_WIDTH always yields the tier-0 table", () => {
-		const layout = computeLayout(BASIC, { cols: 24, rows: 8 });
-		expect(layout).toMatchObject({ tier: 0, cardWidth: 24, totalHeight: TABLE_HEADER_HEIGHT + 6, fits: true });
-		expect(layout.placed.map(p => p.y)).toEqual([2, 3, 4, 5, 6, 7]);
+	test("width below MIN_CARD_WIDTH always yields the tier-0 list", () => {
+		const layout = computeLayout(BASIC, { cols: 24, rows: 10 });
+		expect(layout).toMatchObject({ tier: 0, cardWidth: 24, totalHeight: 10, fits: true });
+		expect(layout.placed.map(p => p.y)).toEqual([0, 1, 3, 6, 7, 8]);
 		expect(computeLayout(BASIC, { cols: 27, rows: 100 }).tier).toBe(0);
 		expect(computeLayout(BASIC, { cols: 28, rows: 100 }).tier).toBe(1);
 	});
 
-	test("12 accounts at 80×12: tier-0 table (14 lines) scrolls; offset clamps", () => {
+	test("12 accounts at 80×12: tier-0 list (24 lines) scrolls; offset clamps", () => {
 		const snapshot = manyAccounts(12);
 		const layout = computeLayout(snapshot, { cols: 80, rows: 12, scroll: 500 });
 		expect(layout.tier).toBe(0);
 		expect(layout.cards).toHaveLength(12);
-		expect(layout.totalHeight).toBe(TABLE_HEADER_HEIGHT + 12);
+		expect(layout.totalHeight).toBe(TABLE_HEADER_HEIGHT + 24);
 		expect(layout.fits).toBe(false);
-		expect(layout.viewport).toEqual({ offset: 2, maxOffset: 2, visibleRows: 12, hiddenAbove: 2, hiddenBelow: 0 });
-		expect(computeLayout(snapshot, { cols: 80, rows: 12, scroll: 1 }).viewport).toEqual({ offset: 1, maxOffset: 2, visibleRows: 12, hiddenAbove: 1, hiddenBelow: 1 });
+		expect(layout.viewport).toEqual({ offset: 12, maxOffset: 12, visibleRows: 12, hiddenAbove: 12, hiddenBelow: 0 });
+		expect(computeLayout(snapshot, { cols: 80, rows: 12, scroll: 1 }).viewport).toEqual({ offset: 1, maxOffset: 12, visibleRows: 12, hiddenAbove: 1, hiddenBelow: 11 });
 		// Card tiers are never scrolled: with unbounded rows the same snapshot is tier 3.
-		expect(computeLayout(snapshot, { cols: 80 })).toMatchObject({ tier: 3, fits: true, totalHeight: 12 * 5 + 11 });
+		expect(computeLayout(snapshot, { cols: 80 })).toMatchObject({ tier: 3, fits: true, totalHeight: 12 * 4 + 11 });
 	});
 
 	test("scroll is only requested state; layout itself is scroll-independent", () => {
@@ -398,8 +396,8 @@ describe("computeLayout", () => {
 
 	test("degenerate terminal sizes never throw", () => {
 		expect(computeLayout(BASIC, { cols: 0, rows: 0 })).toMatchObject({ columns: 0, tier: 0, totalHeight: 0, placed: [] });
-		expect(computeLayout(BASIC, { cols: 1, rows: 1 })).toMatchObject({ columns: 1, tier: 0, totalHeight: 8 });
-		expect(computeLayout(BASIC, { cols: 80, rows: 0 })).toMatchObject({ tier: 0, fits: false, totalHeight: 8 });
+		expect(computeLayout(BASIC, { cols: 1, rows: 1 })).toMatchObject({ columns: 1, tier: 0, totalHeight: 10 });
+		expect(computeLayout(BASIC, { cols: 80, rows: 0 })).toMatchObject({ tier: 0, fits: false, totalHeight: 10 });
 		expect(computeLayout(BASIC, { cols: 80, rows: 1 }).viewport.visibleRows).toBe(1);
 		expect(computeLayout(BASIC, { cols: -3, rows: -3 })).toMatchObject({ cols: 0, rows: 0 });
 		expect(computeLayout(BASIC, { cols: "abc", rows: null }).cols).toBe(80);
