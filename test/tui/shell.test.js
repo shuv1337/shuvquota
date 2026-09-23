@@ -85,7 +85,7 @@ describe("renderShell", () => {
 		expect(wide).toContain("ACCOUNTS");
 		expect(wide).toContain("personal");
 		expect(wide).toContain("日本語ラベル");
-		const narrow = renderShell(view(), { cols: SIDEBAR_MIN_COLS - 1, rows: 30 }, { now: NOW, color: false }).lines.slice(0, -1).join("\n");
+		const narrow = renderShell(view(), { cols: SIDEBAR_MIN_COLS - 1, rows: 30 }, { now: NOW, color: false }).lines.slice(1, -1).join("\n");
 		expect(narrow).toContain("ACCOUNTS");
 		expect(narrow).not.toContain("LIMITS");
 		expect(narrow).not.toContain("│");
@@ -97,6 +97,24 @@ describe("renderShell", () => {
 		const start = lines.findIndex(line => line.includes("CODEX"));
 		expect(lines.slice(start, start + 5).map(line => line.slice(0, 3))).toEqual([" ▎ ", " ▎ ", " ▎ ", " ▎ ", "   "]);
 		expect(lines[start + 3].trim()).toBe("▎");
+	});
+
+	test("narrow provider views stack the list above the selected account's detail", () => {
+		const size = { cols: SIDEBAR_MIN_COLS - 1, rows: 30 };
+		const lines = renderShell(view({ providerFilter: "claude" }), size, { now: NOW, color: false }).lines;
+		const text = lines.join("\n");
+		expect(text).toContain("LIMITS");
+		expect(lines.findIndex(line => line.includes("● main"))).toBeLessThan(lines.findIndex(line => line.includes("LIMITS")));
+		expect(text).not.toContain("‹");
+		const short = renderShell(view({ providerFilter: "claude" }), { ...size, rows: 12 }, { now: NOW, color: false }).lines.join("\n");
+		expect(short).not.toContain("LIMITS");
+		const all = renderShell(view(), size, { now: NOW, color: false }).lines.join("\n");
+		expect(all).not.toContain("LIMITS");
+	});
+
+	test("top bar starts with the gauge wordmark", () => {
+		const [top] = renderShell(view(), { cols: 80, rows: 10 }, { now: NOW, color: false }).lines;
+		expect(top.startsWith(" ▂▄▆█ shuvquota │")).toBe(true);
 	});
 
 	test("emails are masked unless revealed", () => {
