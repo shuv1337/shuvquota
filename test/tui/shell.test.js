@@ -92,6 +92,13 @@ describe("renderShell", () => {
 		expect(narrow).toMatch(/● work {10,}7%/);
 	});
 
+	test("each provider is a block with an accent bar and closing padding row", () => {
+		const lines = renderShell(view(), { cols: 50, rows: 24 }, { now: NOW, color: false }).lines;
+		const start = lines.findIndex(line => line.includes("CODEX"));
+		expect(lines.slice(start, start + 5).map(line => line.slice(0, 3))).toEqual([" ▎ ", " ▎ ", " ▎ ", " ▎ ", "   "]);
+		expect(lines[start + 3].trim()).toBe("▎");
+	});
+
 	test("emails are masked unless revealed", () => {
 		const selected = "codex:work";
 		const masked = renderShell(view({ selected }), { cols: 120, rows: 30 }, { now: NOW, color: false }).lines.join("\n");
