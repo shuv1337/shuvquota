@@ -14,6 +14,13 @@ artwork and is not covered by the notices below.
 The provider marks remain trademarks of their respective owners. Inclusion here does not imply
 endorsement.
 
+### Claude starburst
+
+- Asset: `providers/claude.svg`
+- Source: <https://api.iconify.design/simple-icons/claude.svg>
+- License: CC0-1.0 (Simple Icons)
+- Changes: added an accessible title and Claude's orange presentation color.
+
 ## Google Antigravity
 
 - Asset: `providers/antigravity.svg`

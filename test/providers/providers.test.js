@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { providers, getProvider } from "../../lib/providers/index.js";
+import { allProviders as providers, getProvider } from "../../lib/providers/index.js";
 import { createCodexProvider } from "../../lib/providers/codex.js";
 import { createClaudeProvider } from "../../lib/providers/claude.js";
 import { createGrokProvider } from "../../lib/providers/grok.js";
@@ -39,7 +39,7 @@ const pct = account => account.windows.map(w => [w.id, w.percentUsed, w.percentR
 
 describe("registry", () => {
 	test("fixed order and lookup", () => {
-		expect(providers.map(p => p.id)).toEqual(["codex", "claude", "grok", "antigravity"]);
+		expect(providers.map(p => p.id)).toEqual(["codex", "claude", "grok", "antigravity", "cursor"]);
 		for (const p of providers) {
 			for (const fn of ["discoverAccounts", "discoverSources", "fetch", "normalize", "login"]) expect(typeof p[fn]).toBe("function");
 		}

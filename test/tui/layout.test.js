@@ -56,7 +56,7 @@ function manyAccounts(count) {
 
 describe("constants", () => {
 	test("fixed provider order and geometry match plan §3.3", () => {
-		expect([...PROVIDER_ORDER]).toEqual(["codex", "claude", "grok", "antigravity"]);
+		expect([...PROVIDER_ORDER]).toEqual(["codex", "claude", "grok", "antigravity", "cursor"]);
 		expect(Object.isFrozen(PROVIDER_ORDER)).toBe(true);
 		expect(CARD_GAP).toBe(2);
 		expect(ROW_GAP).toBe(1);

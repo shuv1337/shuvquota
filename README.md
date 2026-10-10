@@ -204,3 +204,37 @@ bun run release:pack
 Tests use fixture credentials and mocked HTTP calls. `lib/` contains the provider
 adapters, owned credential store, snapshot pipeline, CLI, server, and terminal UI;
 tests import modules directly. No runtime dependencies are required.
+
+### Cursor accounts from T3 Code
+
+Cursor API keys can be read from a T3 Code state directory by setting
+`SHUVQUOTA_T3_STATE_DIR=/path/to/t3/userdata` in `~/.shuvquota.env`. Both inline
+keys and T3's `provider-env-*.bin` secret references are supported. Each enabled
+Cursor instance becomes an account; duplicate keys are fetched once. `cq cursor`
+shows quota and `cq cursor sources` lists the physical sources. These accounts
+are read-only: manage their keys and names in T3 Code, not `cq add` or `reauth`.
+They do not use an owned shuvquota credential store.
+
+The adapter exchanges each API key through Cursor's own API-key login endpoint,
+then reads the dashboard usage endpoint. It never rotates a harness refresh token,
+persists the returned session, or writes T3 configuration. Total usage, Auto, and API
+windows use Cursor's reported percentages, with the reported billing-cycle reset.
+These endpoints were verified with the installed Cursor CLI's protocol; they are
+not a guaranteed public quota API.
+
+`SHUVQUOTA_DISABLED_PROVIDERS=grok` hides a provider from default CLI/dashboard
+scans without deleting its credentials. Explicit commands such as `cq grok`
+remain available. Multiple provider IDs may be separated by commas.
+
+### Existing cursorprox accounts
+
+Set `SHUVQUOTA_CURSORPROX_AUTH_DIR=/path/to/cursorprox/run/gateway/auths` in
+`~/.shuvquota.env` to read existing Cursor sessions. Disabled records are skipped.
+No tokens are copied or written, and external refresh tokens are never used.
+Each scan rereads the current access tokens maintained by cursorprox. If a session
+expires, reauthenticate in cursorprox; shuvquota reports the authentication error.
+
+When both sources are configured, matching Cursor JWT subjects merge into one card
+with the T3 label. All physical sources remain visible through `cq cursor sources`.
+Records without a known subject remain separate. Total usage is Cursor's reported
+bonus-inclusive percentage, not the remaining purchased allowance.

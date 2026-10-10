@@ -4,7 +4,7 @@
 
 `shuvquota` is a self-managed multi-account quota monitor for Codex, Claude, Grok,
 and Antigravity. Node.js >=18, ESM, **zero runtime dependencies**. Use Bun for tests
-and the commands in `package.json`. Work locally with `jj`; commit only after the
+and the commands in `package.json`. Commit only after the
 relevant checks and full `bun test` pass.
 
 The migration plan is `PLAN-v2-tui-readonly.md`. Check its progress and

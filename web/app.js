@@ -6,7 +6,7 @@ const HISTORY_LIMIT = 12;
 
 const PROVIDER_ICONS = Object.freeze({
 	codex: "/icons/providers/openai.svg",
-	claude: "/icons/providers/anthropic.svg",
+	claude: "/icons/providers/claude.svg",
 	grok: "/icons/providers/xai.svg",
 	antigravity: "/icons/providers/antigravity.svg",
 });
@@ -204,6 +204,7 @@ function cell(label, className, children) {
 }
 
 function providerSetupHint(providerId) {
+	if (providerId === "cursor") return "Configure Cursor API keys in T3 Code and set SHUVQUOTA_T3_STATE_DIR.";
 	if (providerId === "grok") {
 		return "Sign in with SuperGrok OAuth in pi, OpenCode, or Hermes.";
 	}
@@ -220,7 +221,7 @@ function renderProviderRow(row) {
 	const remaining = clampPercent(window?.percentRemaining);
 	const reset = formatResetDate(window?.resetsAt);
 	const windows = Array.isArray(account?.windows) ? account.windows : [];
-	const iconPath = PROVIDER_ICONS[provider.id] ?? PROVIDER_ICONS.codex;
+	const iconPath = PROVIDER_ICONS[provider.id] ?? null;
 	const details = element("details", {
 		className: "provider-entry",
 		attributes: { "data-risk": risk.id },
@@ -236,7 +237,7 @@ function renderProviderRow(row) {
 		element("span", { className: "provider-tag", text: window?.label ?? "Local" }),
 	]);
 	const providerCell = cell("Provider", "provider-cell", [
-		element("span", { className: "provider-icon-shell" }, [image(iconPath)]),
+		element("span", { className: "provider-icon-shell" }, [iconPath ? image(iconPath) : element("span", { text: "C", attributes: { "aria-hidden": "true" } })]),
 		providerCopy,
 	]);
 
