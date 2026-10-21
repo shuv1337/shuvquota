@@ -150,13 +150,13 @@ describe("renderShell", () => {
 	test("error accounts show their message in the detail pane", () => {
 		const lines = renderShell(view({ selected: "codex:personal" }), { cols: 120, rows: 30 }, { now: NOW, color: false }).lines.join("\n");
 		expect(lines).toContain("✕  HTTP 401 unauthorized");
-		expect(lines).toContain("Sign in again with  cq codex reauth personal");
+		expect(lines).toContain("Manage sign-ins with  m");
 	});
 
 	test("empty providers suggest the enrollment command", () => {
 		const snapshot = { schemaVersion: 2, providers: [{ id: "grok", name: "Grok", accounts: [] }] };
 		const lines = renderShell(view({ snapshot }), { cols: 100, rows: 20 }, { now: NOW, color: false }).lines.join("\n");
-		expect(lines).toContain("Add one with  cq grok add");
+		expect(lines).toContain("Add one with  m  a");
 	});
 
 	test("status bar summarizes accounts, low quota, and errors", () => {

@@ -206,18 +206,17 @@ describe("cq <provider> reauth", () => {
 		expect(raw).not.toContain("sneaky-label-from-provider\"");
 	});
 
-	test("a legacy row is listed as read-only and becomes independent only after reauth", async () => {
+	test("a pre-v2 row is invisible, cannot be reauthenticated, and is replaced by a fresh add", async () => {
 		seedStore("codex", [{ label: "imported", access: "legacy-access-token-2222222222222222", email: "carol@example.test" }], { note: "keep me" });
-		const { provider } = makeProvider({ login: credential({ accountId: "acct_after_reauth" }) });
+		const { provider } = makeProvider({ login: credential({ accountId: "acct_after_add" }) });
 
-		const before = await run(["codex", "accounts", "--json"], { providers: [provider] });
-		expect(before.json()).toEqual([{ provider: "codex", label: "imported", email: "c***@example.test", enrollment: "legacy", readOnly: true }]);
-		expect((await run(["codex", "accounts"], { providers: [provider] })).text).toBe("codex\timported\treauth required\n");
+		expect((await run(["codex", "accounts", "--json"], { providers: [provider] })).json()).toEqual([]);
+		expect((await fails(["codex", "reauth", "imported"], { providers: [provider] })).message).toMatch(/'imported' not found/);
 
-		await run(["codex", "reauth", "imported"], { providers: [provider] });
-		expect(readRows("codex")).toEqual([{ ...credential({ accountId: "acct_after_reauth" }), label: "imported", enrollment: "independent" }]);
+		await run(["codex", "add", "imported"], { providers: [provider] });
+		expect(readRows("codex")).toEqual([{ ...credential({ accountId: "acct_after_add" }), label: "imported", enrollment: "independent" }]);
 		expect(JSON.parse(readFileSync(storePath("codex"), "utf8")).note).toBe("keep me");
-		expect((await run(["codex", "accounts"], { providers: [provider] })).text).toBe("codex\timported\tmanaged\n");
+		expect((await run(["codex", "accounts"], { providers: [provider] })).text).toBe("codex\timported\ta***@example.test\n");
 	});
 });
 
@@ -248,8 +247,8 @@ describe("cq <provider> rename / remove", () => {
 		expect(readRows("codex").map(row => row.label)).toEqual(["personal", "other"]);
 		expect(readRows("codex")[0]).toEqual({ ...credential(), label: "personal", enrollment: "independent" });
 
-		expect((await fails(["codex", "rename", "personal", `bad${ESC}[0m`], { providers: [provider] })).message).toMatch(/valid new label/);
-		expect((await fails(["codex", "rename", "personal", "  "], { providers: [provider] })).message).toMatch(/valid new label/);
+		expect((await fails(["codex", "rename", "personal", `bad${ESC}[0m`], { providers: [provider] })).message).toMatch(/non-empty new label/);
+		expect((await fails(["codex", "rename", "personal", "  "], { providers: [provider] })).message).toMatch(/non-empty new label/);
 		expect((await fails(["codex", "rename", "missing", "x"], { providers: [provider] })).message).toMatch(/'missing' not found/);
 		expect((await fails(["codex", "rename", "personal", "other"], { providers: [provider] })).message).toMatch(/'other' already exists/);
 		expect(readRows("codex").map(row => row.label)).toEqual(["personal", "other"]);
@@ -325,22 +324,21 @@ describe("cq accounts", () => {
 
 		const masked = await run(["codex", "accounts", "--json"], { providers: [provider] });
 		const records = masked.json();
-		expect(records).toHaveLength(3);
+		expect(records).toHaveLength(2);
 		for (const record of records) {
-			expect(Object.keys(record).sort()).toEqual(["email", "enrollment", "label", "provider", "readOnly"]);
+			expect(Object.keys(record).sort()).toEqual(["email", "label", "provider"]);
 			expect(record.provider).toBe("codex");
 		}
-		expect(records[0]).toEqual({ provider: "codex", label: "work", email: "a***@example.test", enrollment: "independent", readOnly: false });
+		expect(records[0]).toEqual({ provider: "codex", label: "work", email: "a***@example.test" });
 		expect(records[1].email).toBe("b***@example.test");
 		expect(records[1].label).not.toContain("bob@example.test");
-		expect(records[2]).toMatchObject({ label: "imported", email: "c***@example.test", enrollment: "legacy", readOnly: true });
 
 		for (const secret of [ACCESS, REFRESH, "access-token-bob", "legacy-access-token", home, "alice@example.test", "bob@example.test", "carol@example.test", "acct_fixture"]) {
 			expect(masked.text).not.toContain(secret);
 		}
 
 		const shown = await run(["codex", "accounts", "--json", "--show-email"], { providers: [provider] });
-		expect(shown.json().map(record => record.email)).toEqual(["alice@example.test", "bob@example.test", "carol@example.test"]);
+		expect(shown.json().map(record => record.email)).toEqual(["alice@example.test", "bob@example.test"]);
 		expect(shown.json()[1].label).not.toContain("bob@example.test");
 		for (const secret of [ACCESS, REFRESH, "access-token-bob", "legacy-access-token", home, "acct_fixture"]) {
 			expect(shown.text).not.toContain(secret);
@@ -348,7 +346,7 @@ describe("cq accounts", () => {
 
 		const text = await run(["codex", "accounts"], { providers: [provider] });
 		expect(text.text.split("\n").filter(Boolean)).toEqual([
-			"codex\twork\tmanaged", "codex\t[redacted]\tmanaged", "codex\timported\treauth required",
+			"codex\twork\ta***@example.test", "codex\t[redacted]\tb***@example.test",
 		]);
 	});
 

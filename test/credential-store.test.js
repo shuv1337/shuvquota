@@ -19,8 +19,7 @@ describe.each(["codex", "claude", "grok", "antigravity"])("%s managed-store cont
 		const path = getManagedStorePath(provider, options);
 		writeFileSync(path, JSON.stringify({ activeLabel: "obsolete", note: "keep", accounts: [] }));
 		addManagedAccount(provider, credential("work"), options);
-		expect(listManagedAccounts(provider, options)[0]).toMatchObject({ label: "work", readOnly: false,
-			enrollment: "independent" });
+		expect(listManagedAccounts(provider, options)[0]).toMatchObject({ label: "work", raw: { enrollment: "independent" } });
 		expect(() => addManagedAccount(provider, credential("work"), options)).toThrow("already exists");
 		renameManagedAccount(provider, "work", "office", options);
 		replaceManagedAccount(provider, "office", { access: "fresh-access", refresh: "fresh-refresh" }, options);
@@ -32,14 +31,17 @@ describe.each(["codex", "claude", "grok", "antigravity"])("%s managed-store cont
 		expect(listManagedAccounts(provider, options)).toEqual([]);
 		expect(() => replaceManagedAccount(provider, "missing", credential("x"), options)).toThrow("not found");
 	});
-	test("legacy credentials remain unowned until explicit reauthentication", () => {
-		writeFileSync(getManagedStorePath(provider, options), JSON.stringify([credential("legacy")]));
-		expect(listManagedAccounts(provider, options)[0].readOnly).toBe(true);
-		expect(updateManagedAccountTokens(provider, "legacy", { access: "new" }, {}, options).reason).toBe("not-independent");
-		renameManagedAccount(provider, "legacy", "renamed", options);
-		expect(listManagedAccounts(provider, options)[0].readOnly).toBe(true);
-		replaceManagedAccount(provider, "renamed", credential("renamed"), options);
-		expect(listManagedAccounts(provider, options)[0].readOnly).toBe(false);
+	test("rows without the enrollment stamp are ignored and dropped by the next write", () => {
+		const path = getManagedStorePath(provider, options);
+		writeFileSync(path, JSON.stringify([credential("legacy")]));
+		expect(listManagedAccounts(provider, options)).toEqual([]);
+		expect(findManagedAccount(provider, "legacy", options)).toBeNull();
+		expect(updateManagedAccountTokens(provider, "legacy", { access: "new" }, {}, options).reason).toBe("not-found");
+		expect(() => renameManagedAccount(provider, "legacy", "renamed", options)).toThrow("not found");
+		expect(() => replaceManagedAccount(provider, "legacy", credential("legacy"), options)).toThrow("not found");
+		expect(JSON.parse(readFileSync(path, "utf8"))).toEqual([credential("legacy")]);
+		addManagedAccount(provider, credential("legacy"), options);
+		expect(JSON.parse(readFileSync(path, "utf8")).accounts).toEqual([{ ...credential("legacy"), enrollment: "independent" }]);
 	});
 	test("refresh CAS never falls back to shared access when refresh sessions diverged", () => {
 		addManagedAccount(provider, credential("work"), options);

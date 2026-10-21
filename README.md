@@ -36,7 +36,8 @@ quota window.
 `cq watch` is a full-screen app: provider tabs across the top, an account
 sidebar with each account's lowest remaining quota, a detail pane for the
 selected account (limits with reset countdowns, then details), and a status
-bar. Press `u` to list the soonest upcoming resets across all accounts.
+bar. Press `u` to list the soonest upcoming resets across all accounts, and `m`
+to manage accounts without leaving the app.
 Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
 `--no-color` or `NO_COLOR` renders the same layout without colour.
 
@@ -45,12 +46,13 @@ Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
 | Key | Action |
 | --- | --- |
 | `q`, Ctrl-C | Quit and restore the terminal |
+| `m` | Manage accounts (see below) |
 | `r` | Refresh now |
 | `u` | Show or hide upcoming resets across all accounts |
 | `e` | Toggle email visibility |
 | `?` | Toggle help |
 | `1` | All providers |
-| `2`–`5` | Codex, Claude, Grok, Antigravity |
+| `2`–`6` | Codex, Claude, Grok, Antigravity, Cursor |
 | `j`/`k`, arrows | Select the next/previous account |
 | PgUp/PgDn | Jump several accounts |
 | `+`/`-` | Increase/decrease refresh interval by 15 seconds |
@@ -59,6 +61,28 @@ The default interval is 3 minutes (180 seconds); the minimum is 15. `cq tui` and
 watch aliases. Use `--once` to force one-shot output. Redirected input or output
 falls back to a static view. A failed scan preserves the last completed view and
 shows a stale marker; individual account failures appear on their own cards.
+
+### Managing accounts in watch mode
+
+`m` opens the account panel, scoped to the current provider tab (all providers on
+the All or Cursor tab) with the selected account preselected. Inside it:
+
+| Key | Action |
+| --- | --- |
+| `a` | Add an account: pick the provider with ←/→, type a label, Enter to sign in |
+| `r` | Reauthenticate the selected account |
+| `n` | Rename the selected account |
+| `d` | Remove the selected account (confirm with `y`) |
+| `j`/`k`, arrows | Move the selection |
+| Esc, `q`, `m` | Close the panel |
+
+Sign-in runs inside the panel. Your browser opens to the provider's login page and
+the panel shows the URL too: Ctrl-Y copies it to the clipboard (OSC 52, where the
+terminal allows it) and Ctrl-O reopens the browser. When the provider shows a code
+(Claude), or over SSH and without a display, paste the code or redirect URL into the
+field and press Enter. Esc cancels; a cancelled sign-in never saves a credential.
+The panel manages only shuvquota's own stores; Cursor and harness sessions stay
+read-only. Every change triggers a rescan.
 
 When Anthropic rate-limits quota reads, Claude waits at least five minutes (or a
 longer `Retry-After`) before another request. The card shows the remaining wait.
@@ -93,8 +117,8 @@ shuvquota's store.
 | `antigravity` | `~/.antigravity-accounts.json` |
 
 Writes are atomic and use file mode `0600`. Old `activeLabel` metadata is ignored
-and removed on the next write. Legacy rows without independent-enrollment
-provenance need `reauth` before shuvquota may refresh them.
+and removed on the next write. Pre-v2 rows without shuvquota's independent-enrollment
+stamp are ignored and dropped on the next write; add those accounts again.
 
 ### Credential ownership
 
@@ -187,8 +211,8 @@ The v1 command surface remains available through **`npx shuvquota@1 …`**. The 
 
 `--local`, `--native`, `--no-factory`, `--billing-day`, `--oauth`, `--manual`,
 `--dry-run`, `--no-browser`, `--base-url`, and `--token` are removed. Use the unified
-ownership policy and environment configuration described above. Reauthenticate
-legacy imported managed accounts before relying on automatic refresh.
+ownership policy and environment configuration described above. Pre-v2 rows in
+the managed stores are ignored; add those accounts again.
 
 The JSON shape is breaking: consume the v2 `providers[].accounts[].windows[]`
 model, not v1's raw provider-keyed responses.

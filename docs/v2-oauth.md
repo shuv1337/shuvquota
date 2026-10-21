@@ -81,7 +81,7 @@ client; we retain the plan's environment-only configuration policy.
 
 Source evidence clears implementation of the missing adapters. Any live login
 requiring browser interaction remains a separate user-driven validation step.
-Legacy imported sessions are not automatically relabeled independent. Their
-managed location is insufficient evidence of ownership; reauthentication is the
-migration path. The recommended strict external policy remains unchanged:
+Legacy imported sessions are not relabeled independent. Their managed location
+is insufficient evidence of ownership, so stores ignore unstamped rows and drop
+them on the next write; adding the account again is the migration path. The recommended strict external policy remains unchanged:
 external access tokens may be used while valid, but are never refreshed.

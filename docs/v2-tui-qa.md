@@ -13,6 +13,30 @@ email `fixture@example.test`, windows `5h percentRemaining 64 resetsAt 2026-09-1
 
 No files were edited other than this report.
 
+## Round 4 — account panel (`m`) and in-house key parsing
+
+Date: 2026-10-20 (PDT). Driver: `termctrl`, sessions `sq-manage-qa2` (bun, 100×30) and
+`sq-manage-node` (node, 90×28), both exited and pruned. Harness: `~/.cache/agent-ws/shuvquota-qa/watch-manage.mjs`
+runs `runWatch` with the real `lib/accounts.js` and credential store in an isolated home
+(`HOME` set at launch; the harness exits unless `os.homedir()` equals it) and a fixture
+provider whose `login` presents a URL with `noBrowser` and asks for a pasted code. No
+network, no real credentials.
+
+| Check | Result |
+| --- | --- |
+| **BUG-4** (bun) Esc in the panel | **FIXED** — readline's decoder under Bun held the lone ESC, so Esc did nothing and the next key arrived as Alt+key. `terminal.js` now parses input chunks itself; Esc closes or cancels immediately under bun and node |
+| `m` opens the panel over the shell, scoped to providers with owned stores (Cursor hidden) | PASS |
+| Add: ←/→ provider, label, Enter → URL wrapped in the panel, code prompt, Ctrl-Y, paste, Enter → `Added Claude work`, rescan shows it in the sidebar | PASS; store written `0600` with `enrollment: "independent"` |
+| Rename `work` → `personal`; Reauth then Esc → `Sign-in cancelled`; Remove with `y` → store `accounts: []` | PASS |
+| Resize to 44×16 with the panel open: frame bounded, footer truncates | PASS |
+| Ctrl-C at the code prompt with typed input: process exits, `RESTORED {"raw":false}`, nothing persisted | PASS |
+| node: add, Esc cancel, Esc close, add with code, `q` quit | PASS |
+
+A harness mistake in the first attempt matters for future harnesses: assigning
+`process.env.HOME` inside a Bun script does not change `os.homedir()`, so that run listed
+the real stores. Its sign-in was cancelled before any code was submitted; real store
+mtimes were confirmed unchanged.
+
 ## Round 3 — re-verification after parent's BUG-3 fix (whole-frame clear before paint)
 
 Fix under test (read-only): `terminal.write` now emits `\x1b[H\x1b[2J` + `lines.join("\r\n")` —

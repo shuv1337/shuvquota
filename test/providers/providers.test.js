@@ -107,7 +107,7 @@ describe("discovery", () => {
 		] }));
 		const sources = await provider.discoverSources();
 		expect(sources.map(s => [s.label, s.kind, s.writable])).toEqual([
-			["work", "managed", true], ["imported", "managed", false],
+			["work", "managed", true],
 			["env-1", "env", false], ["codex-cli", "harness", false], ["other", "harness", false],
 		]);
 		expect(sources[0].location).toBe(join(home, ".codex-accounts.json"));
@@ -116,7 +116,7 @@ describe("discovery", () => {
 			expect(JSON.stringify(source)).not.toMatch(/-at|-rt/);
 		}
 		const accounts = await provider.discoverAccounts();
-		expect(accounts.map(a => a.label)).toEqual(["work", "imported", "other"]);
+		expect(accounts.map(a => a.label)).toEqual(["work", "other"]);
 	});
 
 	test("claude sources expose a fingerprint, never the token", async () => {
@@ -170,7 +170,7 @@ describe("refresh discipline", () => {
 		expect(existsSync(join(home, ".codex-accounts.json"))).toBe(false);
 	});
 
-	test("legacy managed rows and rows sharing a refresh with an external session are never rotated or written", async () => {
+	test("unstamped managed rows are ignored; rows sharing a refresh with an external session are never rotated or written", async () => {
 		writeStore("claude", [
 			{ label: "legacy", oauthToken: "l-at", oauthRefreshToken: "l-rt", oauthExpiresAt: NOW.getTime() - 1 },
 			{ label: "shared", oauthToken: "s-at", oauthRefreshToken: "harness-rt", oauthExpiresAt: NOW.getTime() - 1, enrollment: "independent" },
@@ -183,10 +183,9 @@ describe("refresh discipline", () => {
 			fetchUsage: async () => ({ usage: { five_hour: { utilization: 1 } } }),
 		}));
 		const accounts = await provider.discoverAccounts();
-		const legacy = await provider.fetch(accounts.find(a => a.label === "legacy"), { now: NOW });
+		expect(accounts.map(a => a.label)).toEqual(["shared"]);
 		const shared = await provider.fetch(accounts.find(a => a.label === "shared"), { now: NOW });
-		expect(legacy.error).toContain("cq claude add");
-		expect(shared.error).toMatch(/shared with an external or legacy session/);
+		expect(shared.error).toMatch(/shared with an external session/);
 		expect(refreshes).toBe(0);
 		expect(readFileSync(join(home, ".claude-accounts.json"), "utf-8")).toBe(before);
 	});

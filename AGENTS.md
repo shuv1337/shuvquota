@@ -15,8 +15,9 @@ validation evidence is in `docs/v2-validation.md`; model outcomes are in
 ## Ownership boundary
 
 - Only independently enrolled shuvquota credentials are refreshable and writable.
-  A legacy row's location in a managed file does not prove independent enrollment.
-  Reauthentication creates the replacement owned session.
+  Managed-store rows without `enrollment: "independent"` are ignored on read and
+  dropped on the next write; there is no legacy-row support. Re-adding the
+  account creates the owned session.
 - Harness and environment sources are read-only. Query a usable access token;
   return an enrollment-required error when it expires. Never refresh an external
   credential, including non-rotating Google sessions.
@@ -36,6 +37,7 @@ validation evidence is in `docs/v2-validation.md`; model outcomes are in
 | Entry/config bootstrap | `shuvquota.js`, `lib/env.js` |
 | Command parsing/routing | `lib/cli.js` |
 | Owned account CRUD/persistence | `lib/credential-store.js` |
+| Account operations shared by CLI and TUI | `lib/accounts.js` |
 | Provider registry/adapters | `lib/providers/` |
 | Independent enrollment | `lib/provider-oauth.js`, existing OAuth helpers |
 | Read-only discovery / raw provider HTTP | `lib/*-accounts.js`, `lib/*-usage.js`, `lib/*-tokens.js` |
@@ -43,7 +45,8 @@ validation evidence is in `docs/v2-validation.md`; model outcomes are in
 | Parallel discovery/fetch/single-flight | `lib/quota.js` |
 | Width/layout/rendering (one-shot cards and list) | `lib/tui/{width,layout,render}.js` |
 | Watch shell (cell canvas, sidebar, detail pane) | `lib/tui/{canvas,shell}.js` |
-| Watch state / terminal lifecycle | `lib/tui/{app,terminal}.js` |
+| Watch state / terminal lifecycle and key parsing | `lib/tui/{app,terminal}.js` |
+| Watch account panel state (pure) | `lib/tui/manage.js` |
 | HTTP boundary / static serving | `lib/shuvquota-server.js` |
 | Dashboard | `web/` |
 
@@ -80,6 +83,9 @@ actual v2 snapshot fixtures across module boundaries; fixture-only unit tests ca
 hide schema drift. Terminal lifecycle changes require real PTY checks in addition
 to fake-stream unit tests: full-width final cells, stale redraw tails, process
 exit, raw mode, and paused stdin have all produced bugs during this migration.
+Keys are parsed in `terminal.js` (`parseKeys`), not readline: Bun's keypress
+decoder holds a lone ESC, so Esc never arrives and the next key becomes Alt+key.
+Check modal keys under both `bun` and `node` in a PTY.
 
 ## Adding a provider
 
@@ -104,6 +110,9 @@ OAuth client secrets stay out of source. Antigravity uses
   stores. Provider HTTP calls use timeouts and clean up timers in `finally`.
 - Restore environment variables and fetch mocks after tests. Avoid live credential
   access in tests and smoke checks; use an isolated home and fixture loaders.
+  Under Bun, `os.homedir()` ignores `process.env.HOME` assigned at runtime: set
+  `HOME` when launching a smoke harness and assert `homedir()` before importing
+  store code, or pass `home` explicitly.
 - `bun test`, `bun run preflight`, and `bun run release:pack` are release checks.
   The preflight clean-tree check can fail during work; report that separately from
   code failures. `package.json` must continue publishing `lib/` and `web/`.
