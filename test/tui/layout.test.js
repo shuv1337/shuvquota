@@ -78,6 +78,15 @@ describe("normalizeSnapshot", () => {
 		expect(normalized.providers[3].accounts.map(a => a.label)).toEqual(["pending", "日本語ラベル"]);
 	});
 
+	test("account labels with numbers sort numerically", () => {
+		const labels = ["Cursor-15", "Cursor-2", "Cursor-1", "Cursor-10", "Cursor-3"];
+		const normalized = normalizeSnapshot({
+			providers: [{ id: "cursor", accounts: labels.map(label => ({ label, status: "ok" })) }],
+		});
+		expect(normalized.providers[0].accounts.map(a => a.label))
+			.toEqual(["Cursor-1", "Cursor-2", "Cursor-3", "Cursor-10", "Cursor-15"]);
+	});
+
 	test("unknown provider ids sort after the fixed order, alphabetically", () => {
 		const normalized = normalizeSnapshot({
 			providers: [{ id: "zeta" }, { id: "grok" }, { id: "alpha" }, { id: "codex" }],

@@ -129,8 +129,13 @@ function formatCountdown(value) {
 	return `in ${mins}m`;
 }
 
-function tightestWindow(account) {
+function tightestWindow(account, providerId) {
 	const windows = Array.isArray(account?.windows) ? account.windows : [];
+	// Cursor seats are rotated on API usage (third-party models such as Opus).
+	const api = providerId === "cursor"
+		? windows.find(window => window?.id === "api" && clampPercent(window.percentRemaining) !== null)
+		: null;
+	if (api) return api;
 	return windows
 		.filter(window => clampPercent(window?.percentRemaining) !== null)
 		.sort((left, right) => left.percentRemaining - right.percentRemaining)[0] ?? null;
@@ -216,7 +221,7 @@ function providerSetupHint(providerId) {
 
 function renderProviderRow(row) {
 	const { provider, account } = row;
-	const window = tightestWindow(account);
+	const window = tightestWindow(account, provider.id);
 	const risk = riskFor(account, window);
 	const remaining = clampPercent(window?.percentRemaining);
 	const reset = formatResetDate(window?.resetsAt);
@@ -389,7 +394,7 @@ function captureHistory(snapshot) {
 	if (state.history[0]?.generatedAt === snapshot.generatedAt) return;
 	const rows = providerRows(snapshot).filter(row => row.account);
 	const tightest = rows
-		.map(row => ({ provider: row.provider.name, account: row.account.label, window: tightestWindow(row.account) }))
+		.map(row => ({ provider: row.provider.name, account: row.account.label, window: tightestWindow(row.account, row.provider.id) }))
 		.filter(item => item.window)
 		.sort((left, right) => left.window.percentRemaining - right.window.percentRemaining)[0] ?? null;
 	

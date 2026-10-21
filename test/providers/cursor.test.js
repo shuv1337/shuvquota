@@ -33,7 +33,7 @@ test("T3 keys exchange into ephemeral sessions; source duplicates remain physica
 		const snapshot = toPublicSnapshot(await loadSnapshot({ providers: [provider] }));
 		const account = snapshot.providers[0].accounts[0];
 		expect(account.status).toBe("ok");
-		expect(account.windows.map(w => w.percentRemaining)).toEqual([99.5, 0]);
+		expect(account.windows.map(w => [w.id, w.percentRemaining])).toEqual([["api", 0], ["total", 99.5]]);
 		expect(account.windows[0].resetsAt).toBe("2026-10-09T00:00:00.000Z");
 		expect(calls.map(c => c[1])).toEqual(["Bearer fixture-api-key", "Bearer fixture-access"]);
 		expect(JSON.stringify(snapshot)).not.toContain("fixture-");
@@ -94,6 +94,31 @@ test("cursorprox merges by token subject, preserves physical sources, skips disa
 		const refreshed = (await provider.discoverAccounts()).find(a => a.accountId === "extra");
 		await provider.fetch(refreshed);
 		expect(calls.at(-1)).toBe(`Bearer ${rotated}`);
+	} finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("disabled T3 instances name matching cursorprox sessions without becoming accounts", async () => {
+	const root = mkdtempSync(join(tmpdir(), "cursor-disabled-"));
+	try {
+		const stateDir = join(root, "t3");
+		const authDir = join(root, "auths");
+		mkdirSync(stateDir); mkdirSync(authDir);
+		writeFileSync(join(stateDir, "settings.json"), JSON.stringify({ providerInstances: {
+			off: { driver: "cursor", displayName: "Cursor-3", enabled: false, environment: [{ name: "CURSOR_API_KEY", value: "key-off" }] },
+			lonely: { driver: "cursor", displayName: "Cursor-1", enabled: false, environment: [{ name: "CURSOR_API_KEY", value: "key-lonely" }] },
+			dupe: { driver: "cursor", displayName: "Cursor-9", enabled: false, environment: [{ name: "CURSOR_API_KEY", value: "key-on" }] },
+			on: { driver: "cursor", displayName: "Cursor-4", environment: [{ name: "CURSOR_API_KEY", value: "key-on" }] },
+		} }));
+		writeFileSync(join(authDir, "don.json"), JSON.stringify({ type: "cursor", access_token: jwt("don"), email: "don@example.com" }));
+		const subjects = { "key-off": "don", "key-lonely": "nobody", "key-on": "four" };
+		const provider = createCursorProvider({ stateDir, authDir, fetchFn: async (url, options) => {
+			const key = options.headers.authorization.slice(7);
+			return Response.json({ accessToken: jwt(subjects[key]) });
+		} });
+		expect(provider.discoverSources().map(s => s.label)).toEqual(["Cursor-4", "Cursor don"]);
+		const accounts = await provider.discoverAccounts();
+		expect(accounts.map(a => a.label)).toEqual(["Cursor-4", "Cursor-3"]);
+		expect(accounts[1].email).toBe("don@example.com");
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });
 

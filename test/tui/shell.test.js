@@ -199,6 +199,20 @@ describe("summaries", () => {
 		expect(lines).toMatch(/● work {5,}fable 29% {3}55%/);
 	});
 
+	test("Cursor headlines API usage even when total is lower", () => {
+		const windows = [
+			{ id: "api", label: "API", percentRemaining: 40 },
+			{ id: "total", label: "Total usage", percentRemaining: 12 },
+			{ id: "auto", label: "Auto", percentRemaining: 100 },
+		];
+		expect(summaryPercents({ providerId: "cursor", kind: "account", account: { windows } }))
+			.toEqual([{ label: "", percent: 40 }]);
+		const lines = renderShell(view({ snapshot: { schemaVersion: 2, providers: [{ id: "cursor", name: "Cursor",
+			accounts: [{ label: "Cursor-3", status: "ok", windows }] }] } }),
+		{ cols: 50, rows: 12 }, { now: NOW, color: false }).lines.join("\n");
+		expect(lines).toMatch(/● Cursor-3 +40%/);
+	});
+
 	test("other providers show their lowest window", () => {
 		const card = { providerId: "codex", kind: "account", account: { windows: [
 			{ id: "5h", label: "5h", percentRemaining: 80 }, { id: "weekly", label: "Weekly", percentRemaining: 23 },
