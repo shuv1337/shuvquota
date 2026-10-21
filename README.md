@@ -231,10 +231,12 @@ tests import modules directly. No runtime dependencies are required.
 
 ### Cursor accounts from T3 Code
 
-Cursor API keys can be read from a T3 Code state directory by setting
+Cursor API keys are read from a T3 Code (shuv2code) state directory, set with
 `SHUVQUOTA_T3_STATE_DIR=/path/to/t3/userdata` in `~/.shuvquota.env`. Both inline
-keys and T3's `provider-env-*.bin` secret references are supported. Each enabled
-Cursor instance becomes an account; duplicate keys are fetched once. `cq cursor`
+keys and T3's `provider-env-*.bin` secret references are supported. Every Cursor
+instance with a key becomes an account under its T3 display name, whether or not
+it is enabled in T3; duplicate keys are fetched once, under the enabled instance's
+name. Cursor's API-key session carries no email, so these cards show none. `cq cursor`
 shows quota and `cq cursor sources` lists the physical sources. These accounts
 are read-only: manage their keys and names in T3 Code, not `cq add` or `reauth`.
 They do not use an owned shuvquota credential store.
@@ -250,15 +252,5 @@ not a guaranteed public quota API.
 scans without deleting its credentials. Explicit commands such as `cq grok`
 remain available. Multiple provider IDs may be separated by commas.
 
-### Existing cursorprox accounts
-
-Set `SHUVQUOTA_CURSORPROX_AUTH_DIR=/path/to/cursorprox/run/gateway/auths` in
-`~/.shuvquota.env` to read existing Cursor sessions. Disabled records are skipped.
-No tokens are copied or written, and external refresh tokens are never used.
-Each scan rereads the current access tokens maintained by cursorprox. If a session
-expires, reauthenticate in cursorprox; shuvquota reports the authentication error.
-
-When both sources are configured, matching Cursor JWT subjects merge into one card
-with the T3 label. All physical sources remain visible through `cq cursor sources`.
-Records without a known subject remain separate. Total usage is Cursor's reported
-bonus-inclusive percentage, not the remaining purchased allowance.
+Cursor's Total usage is its reported bonus-inclusive percentage, not the remaining
+purchased allowance.

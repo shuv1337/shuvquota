@@ -21,7 +21,7 @@ test("T3 keys exchange into ephemeral sessions; source duplicates remain physica
 		} });
 		writeFileSync(settingsPath, config);
 		const calls = [];
-		const provider = createCursorProvider({ stateDir, authDir: "", fetchFn: async (url, options) => {
+		const provider = createCursorProvider({ stateDir, fetchFn: async (url, options) => {
 			calls.push([url, options.headers.authorization]);
 			return Response.json(url.endsWith("exchange_user_api_key")
 				? { accessToken: "fixture-access", refreshToken: "must-not-be-written" }
@@ -49,89 +49,18 @@ test("authentication failures never echo provider response bodies", async () => 
 		.rejects.toThrow("Cursor authentication required");
 });
 
-const jwt = (sub, exp = 4102444800) => `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ sub, exp })).toString("base64url")}.fixture`;
-
-test("cursorprox merges by token subject, preserves physical sources, skips disabled rows and rereads rotated access", async () => {
-	const root = mkdtempSync(join(tmpdir(), "cursor-proxy-"));
+test("every T3 instance with a key is an account, disabled ones included; enabled wins a shared key", async () => {
+	const stateDir = mkdtempSync(join(tmpdir(), "cursor-disabled-"));
 	try {
-		const stateDir = join(root, "t3");
-		const authDir = join(root, "auths");
-		mkdirSync(stateDir); mkdirSync(authDir);
-		writeFileSync(join(stateDir, "settings.json"), JSON.stringify({ providerInstances: {
-			personal: { driver: "cursor", displayName: "Cursor-1", environment: [{ name: "CURSOR_API_KEY", value: "fixture-key" }] },
-		} }));
-		const records = {
-			"overlap.json": { type: "cursor", access_token: jwt("same"), email: "person@example.com" },
-			"extra.json": { type: "cursor", access_token: jwt("extra"), email: "extra@example.com", refresh_token: "never-refresh-me" },
-			"disabled.json": { type: "cursor", access_token: jwt("disabled"), disabled: true },
-			"unknown-one.json": { type: "cursor", access_token: "opaque-one" },
-			"unknown-two.json": { type: "cursor", access_token: "opaque-two" },
-		};
-		for (const [file, record] of Object.entries(records)) writeFileSync(join(authDir, file), JSON.stringify(record));
-		writeFileSync(join(authDir, "invalid.json"), "{broken");
-		const calls = [];
-		const provider = createCursorProvider({ stateDir, authDir, fetchFn: async (url, options) => {
-			calls.push(options.headers.authorization);
-			return Response.json(url.endsWith("exchange_user_api_key")
-				? { accessToken: jwt("same"), refreshToken: "discard" }
-				: { planUsage: { totalPercentUsed: 35 } });
-		} });
-		expect(provider.discoverSources()).toHaveLength(5);
-		expect(JSON.stringify(provider.discoverSources())).not.toContain("access_token");
-		const accounts = await provider.discoverAccounts();
-		expect(accounts).toHaveLength(4);
-		expect(accounts.find(a => a.accountId === "same").label).toBe("Cursor-1");
-		const snapshot = toPublicSnapshot(await loadSnapshot({ providers: [provider] }));
-		expect(snapshot.providers[0].accounts).toHaveLength(4);
-		expect(snapshot.providers[0].accounts.every(a => a.status === "ok")).toBe(true);
-		expect(snapshot.providers[0].accounts[0].windows[0].label).toBe("Total usage");
-		const output = JSON.stringify(snapshot);
-		for (const secret of ["fixture-key", "never-refresh-me", "person@example.com", root, jwt("extra")]) expect(output).not.toContain(secret);
-		expect(calls).not.toContain("Bearer never-refresh-me");
-		for (const [file, record] of Object.entries(records)) expect(readFileSync(join(authDir, file), "utf8")).toBe(JSON.stringify(record));
-		const rotated = jwt("extra", 4102444900);
-		writeFileSync(join(authDir, "extra.json"), JSON.stringify({ ...records["extra.json"], access_token: rotated }));
-		const refreshed = (await provider.discoverAccounts()).find(a => a.accountId === "extra");
-		await provider.fetch(refreshed);
-		expect(calls.at(-1)).toBe(`Bearer ${rotated}`);
-	} finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test("disabled T3 instances name matching cursorprox sessions without becoming accounts", async () => {
-	const root = mkdtempSync(join(tmpdir(), "cursor-disabled-"));
-	try {
-		const stateDir = join(root, "t3");
-		const authDir = join(root, "auths");
-		mkdirSync(stateDir); mkdirSync(authDir);
 		writeFileSync(join(stateDir, "settings.json"), JSON.stringify({ providerInstances: {
 			off: { driver: "cursor", displayName: "Cursor-3", enabled: false, environment: [{ name: "CURSOR_API_KEY", value: "key-off" }] },
-			lonely: { driver: "cursor", displayName: "Cursor-1", enabled: false, environment: [{ name: "CURSOR_API_KEY", value: "key-lonely" }] },
 			dupe: { driver: "cursor", displayName: "Cursor-9", enabled: false, environment: [{ name: "CURSOR_API_KEY", value: "key-on" }] },
 			on: { driver: "cursor", displayName: "Cursor-4", environment: [{ name: "CURSOR_API_KEY", value: "key-on" }] },
+			nokey: { driver: "cursor", displayName: "Cursor-5", environment: [] },
+			other: { driver: "codex", displayName: "Codex", environment: [{ name: "CURSOR_API_KEY", value: "key-x" }] },
 		} }));
-		writeFileSync(join(authDir, "don.json"), JSON.stringify({ type: "cursor", access_token: jwt("don"), email: "don@example.com" }));
-		const subjects = { "key-off": "don", "key-lonely": "nobody", "key-on": "four" };
-		const provider = createCursorProvider({ stateDir, authDir, fetchFn: async (url, options) => {
-			const key = options.headers.authorization.slice(7);
-			return Response.json({ accessToken: jwt(subjects[key]) });
-		} });
-		expect(provider.discoverSources().map(s => s.label)).toEqual(["Cursor-4", "Cursor don"]);
-		const accounts = await provider.discoverAccounts();
-		expect(accounts.map(a => a.label)).toEqual(["Cursor-4", "Cursor-3"]);
-		expect(accounts[1].email).toBe("don@example.com");
-	} finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test("expired cursorprox sessions fail without refreshing or contacting the provider", async () => {
-	const authDir = mkdtempSync(join(tmpdir(), "cursor-expired-"));
-	try {
-		const record = JSON.stringify({ type: "cursor", access_token: jwt("expired", 1), refresh_token: "external-refresh" });
-		const file = join(authDir, "expired.json");
-		writeFileSync(file, record);
-		let calls = 0;
-		const provider = createCursorProvider({ stateDir: "", authDir, fetchFn: async () => { calls++; throw new Error("unexpected HTTP"); } });
-		await expect(provider.fetch((await provider.discoverAccounts())[0])).rejects.toThrow("reauthenticate in cursorprox");
-		expect(calls).toBe(0);
-		expect(readFileSync(file, "utf8")).toBe(record);
-	} finally { rmSync(authDir, { recursive: true, force: true }); }
+		const provider = createCursorProvider({ stateDir, fetchFn: async () => { throw new Error("no network in discovery"); } });
+		expect(provider.discoverSources().map(s => s.label)).toEqual(["Cursor-3", "Cursor-9", "Cursor-4"]);
+		expect((await provider.discoverAccounts()).map(a => a.label)).toEqual(["Cursor-4", "Cursor-3"]);
+	} finally { rmSync(stateDir, { recursive: true, force: true }); }
 });
