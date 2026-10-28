@@ -36,7 +36,7 @@ const REQUIRED_DISK_PATHS = [
 	"web/styles.css",
 	"web/manifest.webmanifest",
 	"web/sw.js",
-	"web/icons/devil-phone.svg",
+	"web/icons/shuvquota.svg",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

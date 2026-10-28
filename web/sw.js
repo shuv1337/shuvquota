@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v18";
+const CACHE_VERSION = "v19";
 const SHELL_CACHE = `shuvquota-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `shuvquota-static-${CACHE_VERSION}`;
 
@@ -17,12 +17,12 @@ const SHELL_URLS = [
 	"/fonts/inter-400.woff2",
 	"/fonts/inter-500.woff2",
 	"/fonts/inter-600.woff2",
-	"/icons/devil-phone.svg",
+	"/icons/shuvquota.svg",
 	"/icons/favicon.ico",
-	"/icons/icon-180.png?v=20",
-	"/icons/icon-192.png?v=20",
-	"/icons/icon-512.png?v=20",
-	"/icons/icon-maskable-512.png?v=20",
+	"/icons/icon-180.png?v=21",
+	"/icons/icon-192.png?v=21",
+	"/icons/icon-512.png?v=21",
+	"/icons/icon-maskable-512.png?v=21",
 	"/icons/providers/openai.svg",
 	"/icons/providers/claude.svg",
 	"/icons/providers/xai.svg",

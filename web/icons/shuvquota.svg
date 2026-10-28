@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 100 100" role="img" aria-label="shuvquota">
+<defs><linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1e22"/><stop offset="1" stop-color="#0a0c0e"/></linearGradient></defs>
+<rect width="100" height="100" rx="22" fill="url(#tile)"/>
+<g transform="translate(5,3) scale(0.9)">
+<path d="M24,38 C16,30 14,18 19,7 C23,19 30,25 38,29 Z" fill="#E42528"/>
+<path d="M76,38 C84,30 86,18 81,7 C77,19 70,25 62,29 Z" fill="#E42528"/>
+<path d="M14,78 V66 A36,36 0 0 1 86,66 V78 Z" fill="none" stroke="#E42528" stroke-width="6.5" stroke-linejoin="round"/>
+<path d="M84,81 C86,89 80,94 72,93" fill="none" stroke="#E42528" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M61,93.5 L74,87 Q71,93.5 74,100 Z" fill="#E42528"/>
+
+<path d="M29,66 A21,21 0 0 1 71,66" fill="none" stroke="#5c1719" stroke-width="9" stroke-dasharray="13.49 4"/>
+<path d="M29,66 A21,21 0 0 1 71,66" fill="none" stroke="#E42528" stroke-width="9" stroke-dasharray="13.49 4 13.49 4 13.49 200"/>
+<path d="M50,66 L58,58" stroke="#E42528" stroke-width="5" stroke-linecap="round"/>
+<path d="M62.5,53.5 L61,63 L53,55 Z" fill="#E42528" stroke="#E42528" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="50" cy="66" r="5" fill="#E42528"/>
+</g></svg>

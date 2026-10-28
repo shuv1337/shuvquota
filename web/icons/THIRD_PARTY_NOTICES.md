@@ -1,6 +1,6 @@
 # Third-party icon notices
 
-The PWA brand artwork (`devil-phone.svg` and its PNG/ICO derivatives) is supplied project
+The PWA brand artwork (`shuvquota.svg` and its PNG/ICO derivatives) is supplied project
 artwork and is not covered by the notices below.
 
 ## Simple Icons
