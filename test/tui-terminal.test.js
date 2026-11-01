@@ -54,6 +54,19 @@ describe("terminal lifecycle", () => {
 		terminal.stop(); input.emit("data", "r"); output.emit("resize");
 		expect(actions).toEqual(["refresh"]); expect(resized).toBe(1);
 	});
+	test("enables mouse reporting, dispatches split SGR events, and restores it", () => {
+		const events = []; const actions = [];
+		const { terminal, input, output } = fixture({ onMouse: event => events.push(event), onAction: action => actions.push(action) });
+		terminal.start();
+		expect(output.text).toContain("\x1b[?1000h\x1b[?1006h");
+		input.emit("data", "\x1b[<0;12;");
+		input.emit("data", "7M\x1b[<0;12;7m\x1b[<64;1;1M");
+		expect(events).toEqual([{ button: 0, x: 11, y: 6, release: false },
+			{ button: 0, x: 11, y: 6, release: true }, { button: 64, x: 0, y: 0, release: false }]);
+		expect(actions).toEqual([]);
+		terminal.stop();
+		expect(output.text).toContain("\x1b[?1006l\x1b[?1000l");
+	});
 	test("onKey sees keys first; Ctrl-C always quits", () => {
 		const actions = []; const keys = [];
 		let consume = true;

@@ -22,18 +22,18 @@ bun add -g shuvquota
 ```sh
 cq codex add personal
 cq claude add work
-cq                         # one-shot quota view
+cq                         # live full-screen view (default)
 cq watch                   # live full-screen view
 cq codex work              # one provider/account
 cq --compact               # one line per metric
 cq --json                  # redacted v2 snapshot
 ```
 
-Bare `cq` always runs once. Cards fill the available terminal width; short
+`cq quota` or `cq --once` runs once. Cards fill the available terminal width; short
 terminals try more, narrower columns, then fall back to one aligned line per
 quota window.
 
-`cq watch` is a full-screen app: provider tabs across the top, an account
+`cq` (or `cq watch`) is a full-screen app: provider tabs across the top, an account
 sidebar with each account's lowest remaining quota, a detail pane for the
 selected account (limits with reset countdowns, then details), and a status
 bar. Press `u` to list the soonest upcoming resets across all accounts, and `m`
@@ -56,6 +56,11 @@ Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
 | `j`/`k`, arrows | Select the next/previous account |
 | PgUp/PgDn | Jump several accounts |
 | `+`/`-` | Increase/decrease refresh interval by 15 seconds |
+
+Click provider tabs, account rows, the status-bar controls, or account-management
+controls; use the mouse wheel to move through accounts. On narrow screens, click
+the active provider tab to cycle filters. Hold Shift to select terminal text if
+your terminal supports it.
 
 The default interval is 3 minutes (180 seconds); the minimum is 15. `cq tui` and `cq -w` are
 watch aliases. Use `--once` to force one-shot output. Redirected input or output

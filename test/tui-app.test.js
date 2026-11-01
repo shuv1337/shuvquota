@@ -104,11 +104,35 @@ function session({ rows = [], login, cols = 100 } = {}) {
 			await settle();
 		},
 		async type(text) { for (const ch of text) await this.press(ch); },
+		async click(text) {
+			const lines = this.frame().split("\n");
+			const y = lines.findIndex(line => line.includes(text));
+			if (y < 0) throw new Error(`Not visible: ${text}`);
+			const x = cellWidth(lines[y].slice(0, lines[y].indexOf(text)));
+			hooks.onMouse({ button: 0, x, y, release: false });
+			await settle();
+		},
 		async quit() { hooks.onAction("quit"); return work; },
 	};
 }
 
 describe("account management in watch mode", () => {
+	test("mouse navigates tabs, help, and management actions", async () => {
+		const s = session({ rows: [{ provider: "codex", providerName: "Codex", label: "work", email: null }] });
+		await s.settle();
+		await s.click(" Codex ");
+		await s.click("m manage");
+		expect(s.frame()).toContain("› work");
+		await s.click("n rename");
+		expect(s.frame()).toContain("Rename account");
+		await s.click("esc back");
+		await s.click("esc close");
+		await s.click("? help");
+		expect(s.frame()).toContain("Keys");
+		await s.click("? help");
+		expect(s.frame()).not.toContain("Keys");
+		await s.quit();
+	});
 	test("m opens the panel over the shell and esc closes it", async () => {
 		const s = session({ rows: [{ provider: "codex", providerName: "Codex", label: "work", email: "a@example.test" }],
 			login: ctx => { ctx.openBrowser("https://auth.example.test/r", { noBrowser: true }); return new Promise(() => {}); } });

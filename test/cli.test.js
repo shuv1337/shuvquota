@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { parseArgs, runCli } from "../lib/cli.js";
 
 describe("v2 command parsing", () => {
-	test("defaults to one-shot quota and accepts provider shorthand", () => {
-		expect(parseArgs([])).toMatchObject({ command: "quota", provider: null });
+	test("defaults to watch and accepts provider shorthand", () => {
+		expect(parseArgs([])).toMatchObject({ command: "watch", provider: null });
+		expect(parseArgs(["quota"]).command).toBe("quota");
 		expect(parseArgs(["codex", "work", "--json"])).toMatchObject({
 			command: "quota", provider: "codex", args: ["work"], options: { json: true },
 		});
@@ -81,6 +82,16 @@ describe("v2 command execution", () => {
 		expect(f.calls()).toBe(1);
 		expect(f.errors()).toContain("showing quota once");
 		expect(f.text()).toContain("64%");
+	});
+	test("bare command starts watch, while explicit quota stays one-shot", async () => {
+		const f = fixture(); let watches = 0;
+		f.deps.runWatch = async () => { watches++; return true; };
+		await runCli([], f.deps);
+		expect(watches).toBe(1);
+		expect(f.calls()).toBe(0);
+		await runCli(["quota"], f.deps);
+		expect(watches).toBe(1);
+		expect(f.calls()).toBe(1);
 	});
 	test("once bypasses alternate screen even with watch command", async () => {
 		const f = fixture(); f.deps.runWatch = async () => { throw new Error("must not start"); };
