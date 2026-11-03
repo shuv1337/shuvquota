@@ -295,7 +295,9 @@ function renderProviderRow(row) {
 			className: "limit-secondary",
 			text: account?.extras?.find(e => e.id === 'banked-resets')
 				? `${account.extras.find(e => e.id === 'banked-resets').value} banked resets`
-				: windows.length > 0 ? "Open for details" : "Quota unavailable",
+				: account?.extras?.find(e => e.id === 'credits')
+					? `${account.extras.find(e => e.id === 'credits').value} credits`
+					: windows.length > 0 ? "Open for details" : "Quota unavailable",
 		}),
 		image("/icons/ui/chevron-down.svg", "", "row-chevron"),
 	]);
@@ -327,6 +329,13 @@ function renderProviderRow(row) {
 		]));
 	}
 	if (account?.extras?.length > 0) {
+		const credits = account.extras.find(e => e.id === 'credits');
+		if (credits) {
+			detailBody.append(element("div", { className: "banked-resets" }, [
+				element("strong", { text: `${credits.value} credits remaining` }),
+				element("span", { text: "Current balance" }),
+			]));
+		}
 		const banked = account.extras.find(e => e.id === 'banked-resets');
 		const expires = account.extras.find(e => e.id === 'banked-expires');
 		if (banked) {

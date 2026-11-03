@@ -33,6 +33,7 @@ import {
 	renderStatic,
 	renderCompact,
 } from "../../lib/tui/render.js";
+import { normalizeCodexAccount, toPublicSnapshot } from "../../lib/snapshot.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(HERE, "fixtures");
@@ -647,6 +648,18 @@ describe("renderCompact", () => {
 			"  5h: 64% left, resets 16:00 Thu (1.2M / 5M tokens)",
 			"  Weekly: 22% left",
 		]);
+	});
+
+	test("a normalized Codex credit balance reaches compact and card output", () => {
+		const account = normalizeCodexAccount({ label: "work" }, {
+			usage: {
+				rate_limit: { secondary_window: { used_percent: 100, limit_window_seconds: 604800 } },
+				credits: { has_credits: true, unlimited: false, balance: "60348" },
+			},
+		}, NOW);
+		const snapshot = toPublicSnapshot({ providers: [{ id: "codex", name: "Codex", accounts: [account] }] });
+		expect(renderCompact(snapshot, { now: NOW })).toContain("  Credits: 60,348");
+		expect(renderStatic(snapshot, { cols: 60, now: NOW }).join("\n")).toContain("credits 60,348");
 	});
 
 	test("empty snapshot", () => {

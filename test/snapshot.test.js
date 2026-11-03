@@ -238,6 +238,24 @@ describe("normalizeCodexAccount", () => {
 		]);
 	});
 
+	test("surfaces the purchased credit balance ahead of banked resets", () => {
+		const withCredits = {
+			usage: { ...result.usage.usage, credits: { has_credits: true, unlimited: false, balance: "60348.75" } },
+		};
+		const snapshot = normalizeCodexAccount(account, { usage: withCredits }, NOW);
+		expect(snapshot.extras[0]).toEqual({ id: "credits", label: "Credits", value: "60,348" });
+		expect(snapshot.extras.map(extra => extra.id)).toEqual(["credits", "banked-resets", "banked-expires"]);
+	});
+
+	test("reports unlimited credits and omits accounts without credits", () => {
+		const extrasFor = credits => normalizeCodexAccount(account, { usage: { credits } }, NOW).extras;
+		expect(extrasFor({ has_credits: true, unlimited: true, balance: null }))
+			.toEqual([{ id: "credits", label: "Credits", value: "Unlimited" }]);
+		expect(extrasFor({ has_credits: false, unlimited: false, balance: "0" })).toEqual([]);
+		expect(extrasFor({ has_credits: true, unlimited: false, balance: null })).toEqual([]);
+		expect(extrasFor(null)).toEqual([]);
+	});
+
 	test("re-ids a weekly-length primary window so it is not mislabelled Session", () => {
 		const weeklyPrimary = {
 			usage: { rate_limit: { primary_window: { used_percent: 5, limit_window_seconds: 604800 } } },
