@@ -44,8 +44,8 @@ Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
 Claude accounts with banked **Limit resets** show the total and groups (New-model,
 weekly, Other, etc.) with their expiry dates in the detail pane and `--compact`.
 `--json` includes each group's `reset: { type, count, expiresAt }` metadata in
-account extras; timestamps are ISO instants, formatted in the terminal's display
-time zone. Unsupported plans or failed optional reads show nothing. This is
+account extras, with optional `startsAt` for future grants; timestamps are ISO
+instants, formatted in Pacific time (the renderer's display time zone). Unsupported plans or failed optional reads show nothing. This is
 read-only: shuvquota never applies, claims, or redeems a reset. See
 [the data-source notes](docs/claude-limit-resets.md).
 
