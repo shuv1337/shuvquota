@@ -39,9 +39,12 @@ The GET uses the existing OAuth bearer, `anthropic-version: 2023-06-01`, and
 
 - `resets_left`: remaining count (not the original `resets_total`).
 - `ends_at`: expiry; `starts_at`: beginning of availability.
-- `gives_back_weekly`: identifies a Fable reset, even when `type` is `full`.
+- `gives_back_weekly`: groups as “New-model resets”, even when `type` is `full`.
+  “Fable” is used only if the API explicitly names it in `type` or `label`;
+  arbitrary API labels are never copied into output.
 - `type`: otherwise `session`, `weekly`, or `full`; older grants can be
-  classified from `clears` (`five_hour` versus weekly limits).
+  classified from `clears` (`five_hour` versus weekly limits). Unclassifiable
+  grants with remaining resets go into “Other”, preserving the held total.
 - `paused`: paused grants are not counted as available.
 
 Spent, expired, or malformed grants are omitted. Future grants count toward the
@@ -106,7 +109,7 @@ Claude · work
   Weekly: 92% left, resets 09:59 Sun
   Fable weekly: 98% left, resets 09:59 Sun
   Limit resets: 4
-  Fable resets: 3 · expire Mar 8, 2027, 23:59 PST
+  New-model resets: 3 · expire Mar 8, 2027, 23:59 PST
   Weekly reset: 1 · expires Dec 15, 2026, 20:59 PST
 ```
 

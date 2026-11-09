@@ -20,7 +20,7 @@ const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const RESETS_URL = `${USAGE_URL}?cedar_ember=1&skip_spend=1`;
 const usage = { seven_day: { utilization: 8, resets_at: "2026-11-15T18:00:00Z" }, spend: { enabled: true } };
 const groups = [
-	{ type: "fable", count: 3, expiresAt: "2027-03-09T07:59:00.000Z" },
+	{ type: "new-model", count: 3, expiresAt: "2027-03-09T07:59:00.000Z" },
 	{ type: "weekly", count: 1, expiresAt: "2026-12-16T04:59:00.000Z" },
 ];
 const originalFetch = globalThis.fetch;
@@ -29,7 +29,7 @@ const payload = grants => ({ cedar_ember: { eligible: true, grants } });
 const grant = fixture.cedar_ember.grants[0];
 
 describe("Claude reset grant normalization", () => {
-	test("recorded response groups Fable by gives_back_weekly before type=full", () => {
+	test("recorded response groups new-model resets by gives_back_weekly before type=full", () => {
 		expect(parseClaudeLimitResets(fixture, NOW)).toEqual(groups);
 	});
 
@@ -85,7 +85,28 @@ describe("Claude reset grant normalization", () => {
 		]), NOW)).toEqual([
 			{ type: "session", count: 1, expiresAt: null },
 			{ type: "full", count: 1, expiresAt: groups[1].expiresAt },
+			{ type: "other", count: 1, expiresAt: groups[1].expiresAt },
 		]);
+	});
+
+	test("unclassified future grants count in Other, including public JSON and rendered total", () => {
+		const data = payload([{ resets_left: 2, starts_at: "2026-12-01T00:00:00Z" }]);
+		const expected = { type: "other", count: 2, expiresAt: null, startsAt: "2026-12-01T00:00:00.000Z" };
+		expect(parseClaudeLimitResets(data, NOW)).toEqual([expected]);
+		const account = normalizeClaudeAccount({ label: "future" }, { usage: data }, NOW);
+		const snapshot = toPublicSnapshot(buildSnapshot([{ id: "claude", name: "Claude", accounts: [account] }]));
+		expect(snapshot.providers[0].accounts[0].extras[1].reset).toEqual(expected);
+		const output = renderCompact(snapshot, { now: NOW, color: false }).join("\n");
+		expect(output).toContain("Limit resets: 2");
+		expect(output).toContain("Other resets: 2 · from Nov 30, 2026, 16:00 PST");
+	});
+
+	test("Fable label requires an explicit API name, never just gives_back_weekly", () => {
+		const modelGrant = fixture.cedar_ember.grants[1];
+		expect(parseClaudeLimitResets(payload([modelGrant]), NOW)[0].type).toBe("new-model");
+		for (const named of [{ ...modelGrant, type: "fable" }, { ...modelGrant, label: "Fable reset" }]) {
+			expect(parseClaudeLimitResets(payload([named]), NOW)[0].type).toBe("fable");
+		}
 	});
 
 	test("constructive reset projection keeps only recognized kind, count and ISO expiry", () => {
@@ -239,10 +260,10 @@ describe("snapshot → JSON → terminal", () => {
 		const data = toDisplaySnapshot(snapshot());
 		const compact = renderCompact(data, { now: NOW, color: false }).join("\n");
 		expect(compact).toContain("Limit resets: 4");
-		expect(compact).toContain("Fable resets: 3 · expire Mar 8, 2027, 23:59 PST");
+		expect(compact).toContain("New-model resets: 3 · expire Mar 8, 2027, 23:59 PST");
 		expect(compact).toContain("Weekly reset: 1 · expires Dec 15, 2026, 20:59 PST");
 		const lines = renderStatic(data, { cols: 180, now: NOW, color: false });
-		expect(lines.join("\n")).toContain("fable resets 3 · expire Mar 8");
+		expect(lines.join("\n")).toContain("new-model resets 3 · expire Mar 8");
 		expect(lines.every(line => cellWidth(line) <= 180)).toBe(true);
 		expect(formatLimitReset(groups[0], { timeZone: "UTC" })).toBe("3 · expire Mar 9");
 		expect(formatLimitReset({ ...groups[0], expiresAt: "2027-07-01T07:59:00Z" }, { timeZone: "America/Los_Angeles", compact: false })).toContain("PDT");
@@ -257,7 +278,7 @@ describe("snapshot → JSON → terminal", () => {
 			expect(lines.length).toBe(40);
 			expect(lines.every(line => cellWidth(line) === cols)).toBe(true);
 			if (cols === 120) {
-				expect(lines.join("\n")).toContain("Fable resets");
+				expect(lines.join("\n")).toContain("New-model resets");
 				expect(lines.join("\n")).toContain("3 · expire Mar 8");
 				expect(lines.join("\n")).toContain("1 · expires Dec 15");
 			}
