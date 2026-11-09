@@ -2,6 +2,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getClaudeUserAgent } from "../lib/claude-identity.js";
 import { parseClaudeLimitResets, projectLimitReset } from "../lib/claude-limit-resets.js";
 import { fetchClaudeLimitResets, fetchClaudeOAuthUsage, fetchClaudeUsageWithResets } from "../lib/claude-usage.js";
 import { createClaudeProvider } from "../lib/providers/claude.js";
@@ -83,6 +84,7 @@ describe("Claude reset grant normalization", () => {
 
 describe("read-only optional HTTP enrichment", () => {
 	test("optional read aborts at five seconds without losing ordinary usage", async () => {
+		await getClaudeUserAgent();
 		const originalTimeout = globalThis.setTimeout;
 		const delays = [];
 		const timer = spyOn(globalThis, "setTimeout").mockImplementation((fn, ms) => {
@@ -160,7 +162,7 @@ describe("read-only optional HTTP enrichment", () => {
 			expect(options.body).toBeUndefined();
 			expect(options.headers.Authorization).toBe("Bearer fixture-access");
 			expect(options.signal).toBeInstanceOf(AbortSignal);
-			if (url === RESETS_URL) expect(options.headers["User-Agent"]).toContain("claude-cli/2.1.319 (external, cli)");
+			if (url === RESETS_URL) expect(options.headers["User-Agent"]).toMatch(/^claude-cli\/\d+\.\d+\.\d+ \(external, cli\) shuvquota$/);
 			else expect(url).toBe(USAGE_URL);
 			return Response.json(url === USAGE_URL ? usage : fixture);
 		} });

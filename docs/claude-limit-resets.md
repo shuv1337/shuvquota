@@ -19,7 +19,13 @@ Verified against Claude Code **2.1.319** and a live OAuth account on
   returned HTTP 200 and four grants. shuvquota appends its own name to the
   compatibility User-Agent; the live CLI check confirmed that also works.
   This version string is a protocol compatibility hint, not a dependency on
-  a locally installed Claude executable.
+  a locally installed Claude executable. The identity string lives in
+  `lib/constants.js`; a lazy, process-cached `claude --version` probe uses
+  `node:child_process.execFile` without a shell, with a 1.5-second timeout.
+  Missing, malformed, older, or timed-out versions fall back to **2.1.319**;
+  newer installed versions raise the User-Agent version. Failures are cached too.
+  A blank reset section may mean the **User-Agent is out of date**, not that
+  the account has no grants.
 - `claude --help` exposes no non-interactive quota/status command. `--print`
   runs a model prompt, so it was not used for discovery.
 
@@ -56,7 +62,12 @@ No external credential was refreshed or written.
 - `lib/claude-usage.js`: fetch ordinary usage first, then optionally enrich only
   `cedar_ember`. The spend-skipping response never replaces normal limits or
   spend. Skip the extra request if usage already contains the block or failed.
-  Optional HTTP/network/JSON failures leave normal usage intact.
+  Optional HTTP/network/JSON failures leave normal usage intact. Reset reads
+  have a five-second timeout and cache successful responses for 15 minutes in
+  memory, keyed by a SHA-256 token hash (never the raw token). Reset 429s pause
+  optional reads for at least five minutes, honoring longer Retry-After values;
+  primary usage cooldowns also suppress reset reads. Expired cached grants are
+  filtered during normalization.
 - `lib/claude-limit-resets.js`: pure grouping and constructive projection;
   provider grant identifiers, labels, and telemetry never reach output.
 - Snapshot extras contain a total and one entry per type/expiry group. Group
