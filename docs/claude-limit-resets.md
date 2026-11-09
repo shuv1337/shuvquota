@@ -83,8 +83,8 @@ time zones, and the real provider pipeline with isolated fixture credentials.
 - Full `bun test`: **765 passed, 0 failed**.
 - `bun run release:pack`: passed; `lib/` and `web/` remain packaged.
 - `git diff --check`: passed.
-- Pre-commit `bun run preflight`: metadata/files passed; only the expected
-  uncommitted-work check failed. Re-run after committing for a clean-tree check.
+- `bun run preflight`: passed on the clean committed tree. Before committing,
+  only the expected uncommitted-work check failed; metadata/files passed.
 
 Live worktree CLI output (`claude work --compact --no-color`, GET-only guard):
 
