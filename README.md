@@ -36,7 +36,7 @@ quota window.
 `cq` (or `cq watch`) is a full-screen app: provider tabs across the top, an account
 sidebar with each account's lowest remaining quota, a detail pane for the
 selected account (limits with reset countdowns, then details), and a status
-bar. Press `u` to list the soonest upcoming resets across all accounts, and `m`
+bar. Press `u` for **Up next**, the soonest upcoming resets across all accounts, and `m`
 to manage accounts without leaving the app.
 Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
 `--no-color` or `NO_COLOR` renders the same layout without colour.
@@ -56,7 +56,7 @@ read-only: shuvquota never applies, claims, or redeems a reset. See
 | `q`, Ctrl-C | Quit and restore the terminal |
 | `m` | Manage accounts (see below) |
 | `r` | Refresh now |
-| `u` | Show or hide upcoming resets across all accounts |
+| `u` | Show or hide Up next (upcoming resets across all accounts) |
 | `e` | Toggle email visibility |
 | `?` | Toggle help |
 | `1` | All providers |

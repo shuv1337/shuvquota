@@ -138,6 +138,15 @@ describe("renderShell", () => {
 		expect(lines).not.toContain("UP NEXT");
 	});
 
+	test("sidebar footer calls the toggle up next, not banked resets", () => {
+		for (const showUpNext of [false, true]) {
+			const lines = renderShell(view({ showUpNext }), { cols: 120, rows: 40 }, { now: NOW, color: false }).lines.join("\n");
+			expect(lines).toContain(showUpNext ? "u hide up next" : "u up next");
+			expect(lines).not.toContain("u resets");
+			expect(lines).not.toContain("hide resets");
+		}
+	});
+
 	test("upcoming resets appear only when toggled on, soonest first", () => {
 		const lines = renderShell(view({ selected: "codex:work", showUpNext: true }), { cols: 120, rows: 40 }, { now: NOW, color: false }).lines;
 		const start = lines.findIndex(line => line.includes("UP NEXT"));
