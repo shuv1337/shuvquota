@@ -41,6 +41,14 @@ to manage accounts without leaving the app.
 Terminals under 72 columns drop the sidebar. Watch mode uses 24-bit colour;
 `--no-color` or `NO_COLOR` renders the same layout without colour.
 
+Claude accounts with banked **Limit resets** show the total and groups (Fable,
+weekly, etc.) with their expiry dates in the detail pane and `--compact`.
+`--json` includes each group's `reset: { type, count, expiresAt }` metadata in
+account extras; timestamps are ISO instants, formatted in the terminal's display
+time zone. Unsupported plans or failed optional reads show nothing. This is
+read-only: shuvquota never applies, claims, or redeems a reset. See
+[the data-source notes](docs/claude-limit-resets.md).
+
 ### Watch controls
 
 | Key | Action |
