@@ -245,6 +245,13 @@ function snapshot() {
 }
 
 describe("snapshot → JSON → terminal", () => {
+	test("invalid display time zone falls back to local dates, for starts and expiry", () => {
+		const reset = { ...groups[0], startsAt: "2027-01-01T00:00:00Z" };
+		for (const compact of [true, false]) {
+			expect(formatLimitReset(reset, { compact, timeZone: "Not/AZone" })).toBe(formatLimitReset(reset, { compact }));
+		}
+	});
+
 	test("public and local JSON retain safe typed groups and total, never grant identifiers", () => {
 		for (const project of [toDisplaySnapshot, toPublicSnapshot]) {
 			const data = project(snapshot());
