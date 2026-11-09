@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseClaudeLimitResets, projectLimitReset } from "../lib/claude-limit-resets.js";
-import { fetchClaudeUsageWithResets } from "../lib/claude-usage.js";
+import { fetchClaudeLimitResets, fetchClaudeOAuthUsage, fetchClaudeUsageWithResets } from "../lib/claude-usage.js";
 import { createClaudeProvider } from "../lib/providers/claude.js";
 import { loadSnapshot } from "../lib/quota.js";
 import { buildSnapshot, normalizeClaudeAccount, toDisplaySnapshot, toPublicSnapshot } from "../lib/snapshot.js";
@@ -82,6 +82,55 @@ describe("Claude reset grant normalization", () => {
 });
 
 describe("read-only optional HTTP enrichment", () => {
+	test("successful reset cache avoids requests for 15 minutes and isolates accounts", async () => {
+		let now = +NOW;
+		let calls = 0;
+		const options = { now: () => now, fetchFn: async () => { calls++; return Response.json(fixture); } };
+		expect(await fetchClaudeLimitResets("cache-account", options)).toEqual(fixture.cedar_ember);
+		now += 14 * 60 * 1000;
+		expect(await fetchClaudeLimitResets("cache-account", options)).toEqual(fixture.cedar_ember);
+		expect(calls).toBe(1);
+		await fetchClaudeLimitResets("cache-other-account", options);
+		expect(calls).toBe(2);
+		now += 60 * 1000;
+		await fetchClaudeLimitResets("cache-account", options);
+		expect(calls).toBe(3);
+	});
+
+	for (const retryAfter of [null, "600", new Date(+NOW + 600000).toUTCString()]) {
+		test(`reset 429 skips next refresh until cooldown ends (${retryAfter})`, async () => {
+			let now = +NOW;
+			let resetCalls = 0;
+			const options = { now: () => now, fetchFn: async url => {
+				if (url === USAGE_URL) return Response.json(usage);
+				resetCalls++;
+				return new Response(null, { status: 429, headers: retryAfter ? { "retry-after": retryAfter } : {} });
+			} };
+			const token = `cooldown-${retryAfter}`;
+			await fetchClaudeUsageWithResets(token, options);
+			now += 299000;
+			expect(await fetchClaudeUsageWithResets(token, options)).toEqual({ success: true, data: usage });
+			expect(resetCalls).toBe(1);
+			if (retryAfter) {
+				now = +NOW + 599000;
+				await fetchClaudeUsageWithResets(token, options);
+				expect(resetCalls).toBe(1);
+			}
+			now = +NOW + (retryAfter ? 600000 : 300000);
+			await fetchClaudeUsageWithResets(token, options);
+			expect(resetCalls).toBe(2);
+		});
+	}
+
+	test("primary cooldown also prevents direct optional reads", async () => {
+		let calls = 0;
+		const options = { now: () => +NOW, fetchFn: async () => { calls++; return new Response(null, { status: 429 }); } };
+		await fetchClaudeOAuthUsage("primary-cooldown-reset", options);
+		await fetchClaudeUsageWithResets("primary-cooldown-reset", options);
+		expect(await fetchClaudeLimitResets("primary-cooldown-reset", options)).toBeNull();
+		expect(calls).toBe(1);
+	});
+
 	test("only GETs status; uses account bearer and usage-client header; preserves spend", async () => {
 		const calls = [];
 		const result = await fetchClaudeUsageWithResets("fixture-access", { fetchFn: async (url, options) => {
