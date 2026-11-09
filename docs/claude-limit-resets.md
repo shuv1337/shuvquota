@@ -44,7 +44,8 @@ The GET uses the existing OAuth bearer, `anthropic-version: 2023-06-01`, and
   classified from `clears` (`five_hour` versus weekly limits).
 - `paused`: paused grants are not counted as available.
 
-Spent, expired, future, or malformed grants are omitted. A held reset may have
+Spent, expired, or malformed grants are omitted. Future grants count toward the
+held total and show “from <date>”; groups preserve distinct availability dates. A held reset may have
 `usable_now: false` because it requires hitting a limit; that does **not** mean
 it has been spent. Missing expiry remains unknown rather than inventing a date.
 Groups preserve distinct expiry dates even when their types match.
@@ -73,7 +74,8 @@ No external credential was refreshed or written.
 - Snapshot extras contain a total and one entry per type/expiry group. Group
   entries include `reset: { type, count, expiresAt }` in both local and public
   JSON, alongside the existing `id`, `label`, and `value` fields. `expiresAt`
-  is an ISO instant or null. Existing extras are unchanged.
+  is an ISO instant or null. Future grants also carry an optional ISO `startsAt`.
+  Existing extras are unchanged.
 - Display helpers format expiry at presentation time, honoring the terminal
   renderer's time zone (Pacific by default). Compact output includes year,
   clock, and zone; the TUI uses short dates to fit the detail pane.

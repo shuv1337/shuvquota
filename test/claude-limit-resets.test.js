@@ -44,18 +44,31 @@ describe("Claude reset grant normalization", () => {
 		]);
 	});
 
-	test("held but not usable_now grants still count; spent/paused/expired/future/malformed do not", () => {
+	test("held but not usable_now grants still count; spent/paused/expired/malformed do not", () => {
 		const data = payload([
 			{ ...grant, usable_now: false, use_requires_limit: true },
 			...[-1, 0, 1.5, "3", NaN, Infinity].map(resets_left => ({ ...grant, resets_left })),
 			{ ...grant, paused: true },
 			{ ...grant, ends_at: NOW.toISOString() },
-			{ ...grant, starts_at: "2028-01-01T00:00:00Z" },
 			{ ...grant, ends_at: "invalid" },
 			{ ...grant, starts_at: "invalid" },
 			null,
 		]);
 		expect(parseClaudeLimitResets(data, NOW)).toEqual([groups[1]]);
+	});
+
+	test("future grants count separately and expose safe availability dates", () => {
+		const startsAt = "2026-12-01T00:00:00.000Z";
+		const result = parseClaudeLimitResets(payload([grant, { ...grant, starts_at: startsAt }]), NOW);
+		expect(result).toEqual([groups[1], { ...groups[1], startsAt }]);
+		const future = result[1];
+		expect(projectLimitReset({ ...future, secret: "private" })).toEqual(future);
+		expect(formatLimitReset(future, { timeZone: "UTC" })).toBe("1 · from Dec 1 · expires Dec 16");
+		const account = normalizeClaudeAccount({ label: "future" }, { usage: payload([{ ...grant, starts_at: startsAt }]) }, NOW);
+		const data = toPublicSnapshot(buildSnapshot([{ id: "claude", name: "Claude", accounts: [account] }]));
+		expect(data.providers[0].accounts[0].extras[0].value).toBe("1");
+		expect(data.providers[0].accounts[0].extras[1].reset.startsAt).toBe(startsAt);
+		expect(renderCompact(data, { now: NOW, color: false }).join("\n")).toContain("from Nov 30, 2026, 16:00 PST");
 	});
 
 	test("missing blocks, unsupported plans and malformed grants are silent", () => {
