@@ -226,14 +226,15 @@ describe("snapshot → JSON → terminal", () => {
 		const data = toDisplaySnapshot(snapshot());
 		const compact = renderCompact(data, { now: NOW, color: false }).join("\n");
 		expect(compact).toContain("Limit resets: 4");
-		expect(compact).toContain("Fable resets: 3 · expire Mar 8, 2027, 11:59 PM PST");
-		expect(compact).toContain("Weekly reset: 1 · expires Dec 15, 2026, 8:59 PM PST");
+		expect(compact).toContain("Fable resets: 3 · expire Mar 8, 2027, 23:59 PST");
+		expect(compact).toContain("Weekly reset: 1 · expires Dec 15, 2026, 20:59 PST");
 		const lines = renderStatic(data, { cols: 180, now: NOW, color: false });
 		expect(lines.join("\n")).toContain("fable resets 3 · expire Mar 8");
 		expect(lines.every(line => cellWidth(line) <= 180)).toBe(true);
 		expect(formatLimitReset(groups[0], { timeZone: "UTC" })).toBe("3 · expire Mar 9");
 		expect(formatLimitReset({ ...groups[0], expiresAt: "2027-07-01T07:59:00Z" }, { timeZone: "America/Los_Angeles", compact: false })).toContain("PDT");
 		expect(formatLimitReset({ ...groups[0], expiresAt: null })).toBe("3");
+		expect(formatLimitReset({ ...groups[0], expiresAt: "2027-07-01T00:00:00Z" }, { timeZone: "UTC", compact: false })).toBe("3 · expire Jul 1, 2027, 00:00 UTC");
 	});
 
 	test("watch detail pane includes groups and stays within narrow/wide geometry", () => {

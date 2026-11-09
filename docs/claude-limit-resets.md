@@ -104,8 +104,8 @@ Claude · work
   Weekly: 92% left, resets 09:59 Sun
   Fable weekly: 98% left, resets 09:59 Sun
   Limit resets: 4
-  Fable resets: 3 · expire Mar 8, 2027, 11:59 PM PST
-  Weekly reset: 1 · expires Dec 15, 2026, 8:59 PM PST
+  Fable resets: 3 · expire Mar 8, 2027, 23:59 PST
+  Weekly reset: 1 · expires Dec 15, 2026, 20:59 PST
 ```
 
 The current account usage differs from the earlier screenshot; the banked
