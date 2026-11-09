@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -82,6 +82,27 @@ describe("Claude reset grant normalization", () => {
 });
 
 describe("read-only optional HTTP enrichment", () => {
+	test("optional read aborts at five seconds without losing ordinary usage", async () => {
+		const originalTimeout = globalThis.setTimeout;
+		const delays = [];
+		const timer = spyOn(globalThis, "setTimeout").mockImplementation((fn, ms) => {
+			delays.push(ms);
+			return originalTimeout(fn, 0);
+		});
+		try {
+			const result = await fetchClaudeUsageWithResets("slow-reset", { fetchFn: async (url, options) => {
+				if (url === USAGE_URL) return Response.json(usage);
+				return new Promise((resolve, reject) => {
+					options.signal.addEventListener("abort", () => reject(new DOMException("timeout", "AbortError")), { once: true });
+				});
+			} });
+			expect(delays).toEqual([15000, 5000]);
+			expect(result).toEqual({ success: true, data: usage });
+		} finally {
+			timer.mockRestore();
+		}
+	});
+
 	test("successful reset cache avoids requests for 15 minutes and isolates accounts", async () => {
 		let now = +NOW;
 		let calls = 0;
