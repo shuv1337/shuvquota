@@ -92,11 +92,28 @@ describe("renderShell", () => {
 		expect(narrow).toMatch(/● work {10,}7%/);
 	});
 
-	test("each provider is a block with an accent bar and closing padding row", () => {
+	test("each account has a reset row within its provider block", () => {
 		const lines = renderShell(view(), { cols: 50, rows: 24 }, { now: NOW, color: false }).lines;
 		const start = lines.findIndex(line => line.includes("CODEX"));
-		expect(lines.slice(start, start + 5).map(line => line.slice(0, 3))).toEqual([" ▎ ", " ▎ ", " ▎ ", " ▎ ", "   "]);
-		expect(lines[start + 3].trim()).toBe("▎");
+		expect(lines.slice(start, start + 5).map(line => line.slice(0, 3))).toEqual([" ▎ ", " ▎ ", " ▎ ", " ▎ ", " ▎ "]);
+		expect(lines[start + 2].trim()).toBe("▎");
+		expect(lines[start + 4]).toContain("Resets in 7d");
+	});
+
+	test("consecutive Cursor accounts sharing a reset get one countdown", () => {
+		const accounts = ["a", "b", "c", "d"].map((label, index) => ({
+			label, status: "ok", windows: [{ id: "api", label: "API", percentRemaining: 50,
+				resetsAt: index < 2 ? "2026-09-20T19:00:00Z" : index === 2 ? "2026-09-21T19:00:00Z" : null }],
+		}));
+		const snapshot = { schemaVersion: 2, providers: [{ id: "cursor", name: "Cursor", accounts }] };
+		const lines = renderShell(view({ snapshot }), { cols: 120, rows: 30 }, { now: NOW, color: false }).lines;
+		const sidebar = lines.map(line => line.split("│")[0]);
+		const one = sidebar.findIndex(line => line.includes("● a"));
+		const two = sidebar.findIndex(line => line.includes("● b"));
+		expect(two).toBe(one + 1);
+		expect(sidebar[two + 1]).toContain("Resets in 3d");
+		expect(sidebar.filter(line => line.includes("Resets in"))).toHaveLength(2);
+		expect(sidebar.join("\n")).toContain("Resets in 4d");
 	});
 
 	test("narrow provider views stack the list above the selected account's detail", () => {

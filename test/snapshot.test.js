@@ -435,6 +435,17 @@ describe("normalizeAntigravityAccount", () => {
 		);
 		expect(snapshot.windows[0].label).toBe("Claude Models 5h");
 	});
+
+	test("preserves a separate exhausted Argon quota from the provider response", async () => {
+		const { normalizeAntigravityQuota } = await import("../lib/antigravity-usage.js");
+		const usage = normalizeAntigravityQuota({ groups: [
+			{ displayName: "Gemini Models", buckets: [{ window: "weekly", remainingFraction: 0.98 }] },
+			{ displayName: "Gemini 4 Argon", buckets: [{ window: "weekly", remainingFraction: 0, resetTime: "2026-01-15T00:00:00Z" }] },
+		] });
+		const snapshot = normalizeAntigravityAccount({}, { usage }, NOW);
+		expect(snapshot.windows).toHaveLength(2);
+		expect(snapshot.windows[1]).toMatchObject({ label: "Gemini 4 Argon Weekly", percentRemaining: 0, resetsAt: "2026-01-15T00:00:00.000Z" });
+	});
 });
 
 describe("normalizeGenericAccount", () => {
