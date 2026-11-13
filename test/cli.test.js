@@ -23,7 +23,7 @@ describe("v2 command parsing", () => {
 		expect(parseArgs(["-w", "factory"]).args).toEqual(["factory"]);
 		expect(parseArgs(["codex", "-w", "synthetic"]).args).toEqual(["synthetic"]);
 	});
-	test.each(["switch", "sync", "set-plan", "factory", "synthetic", "opencode-go", "proxx"])(
+	test.each(["switch", "sync", "set-plan", "factory", "synthetic", "proxx"])(
 		"rejects removed command %s with v1 exit code", command => {
 			for (const args of [[command], ["codex", command]]) {
 				try { parseArgs(args); throw new Error("accepted removed command"); }

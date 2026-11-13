@@ -39,7 +39,7 @@ const pct = account => account.windows.map(w => [w.id, w.percentUsed, w.percentR
 
 describe("registry", () => {
 	test("fixed order and lookup", () => {
-		expect(providers.map(p => p.id)).toEqual(["codex", "claude", "grok", "antigravity", "cursor"]);
+		expect(providers.map(p => p.id)).toEqual(["codex", "claude", "grok", "antigravity", "cursor", "opencode-go"]);
 		for (const p of providers) {
 			for (const fn of ["discoverAccounts", "discoverSources", "fetch", "normalize", "login"]) expect(typeof p[fn]).toBe("function");
 		}

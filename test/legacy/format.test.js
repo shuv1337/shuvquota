@@ -155,7 +155,7 @@ describe("Codex banked reset usage", () => {
 
 describe("removed namespace guard", () => {
 	test("REMOVED_NAMESPACES lists exactly the dropped providers", () => {
-		expect([...REMOVED_NAMESPACES].sort()).toEqual(["factory", "opencode-go", "synthetic"]);
+		expect([...REMOVED_NAMESPACES].sort()).toEqual(["factory", "synthetic"]);
 		expect(REMOVED_NAMESPACE_EXIT_CODE).toBe(2);
 		expect(V1_COMPAT_COMMAND).toBe("npx shuvquota@1");
 	});

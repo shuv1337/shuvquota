@@ -209,6 +209,7 @@ function cell(label, className, children) {
 }
 
 function providerSetupHint(providerId) {
+	if (providerId === "opencode-go") return "Configure an OpenCode Go API key in Shuvcode.";
 	if (providerId === "cursor") return "Configure Cursor API keys in T3 Code and set SHUVQUOTA_T3_STATE_DIR.";
 	if (providerId === "grok") {
 		return "Sign in with SuperGrok OAuth in pi, OpenCode, or Hermes.";

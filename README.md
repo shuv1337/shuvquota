@@ -60,7 +60,7 @@ read-only: shuvquota never applies, claims, or redeems a reset. See
 | `e` | Toggle email visibility |
 | `?` | Toggle help |
 | `1` | All providers |
-| `2`–`6` | Codex, Claude, Grok, Antigravity, Cursor |
+| `2`–`7` | Codex, Claude, Grok, Antigravity, Cursor, OpenCode Go |
 | `j`/`k`, arrows | Select the next/previous account |
 | PgUp/PgDn | Jump several accounts |
 | `+`/`-` | Increase/decrease refresh interval by 15 seconds |
@@ -215,7 +215,7 @@ path restrictions remain enabled. `/api/health` and `/api/quota` use schema v2.
 
 ## Migrating from v1
 
-v2 removes Factory, OpenCode Go, and Synthetic, the standalone proxx namespace,
+v2 removes Factory and Synthetic, the standalone proxx namespace,
 and harness-switching/synchronization commands (`switch`, `sync`, `set-plan`).
 Removed command forms exit 2 with a v1 migration hint.
 
@@ -267,3 +267,12 @@ remain available. Multiple provider IDs may be separated by commas.
 
 Cursor's Total usage is its reported bonus-inclusive percentage, not the remaining
 purchased allowance.
+
+### OpenCode Go
+
+OpenCode Go reads API keys from Shuvcode or OpenCode credentials, or from
+`OPENCODE_GO_API_KEY`. These sources are read-only; manage keys in their source.
+The provider queries OpenCode’s usage endpoint for rolling five-hour, weekly,
+and monthly limits. Database discovery requires a runtime with `node:sqlite`
+(Node 22.5+); the environment and OpenCode auth file also work on Node 18.
+The endpoint reports subscription usage, not credit balance.
