@@ -46,8 +46,36 @@ weekly, Other, etc.) with their expiry dates in the detail pane and `--compact`.
 `--json` includes each group's `reset: { type, count, expiresAt }` metadata in
 account extras, with optional `startsAt` for future grants; timestamps are ISO
 instants, formatted in Pacific time (the renderer's display time zone). Unsupported plans or failed optional reads show nothing. This is
-read-only: shuvquota never applies, claims, or redeems a reset. See
+read-only: shuvquota never applies, claims, or redeems a Claude reset. See
 [the data-source notes](docs/claude-limit-resets.md).
+
+### Use a Codex banked reset
+
+```sh
+cq codex reset personal
+cq codex reset personal --credit-id <credit-id> --request-id <unique-operation-id>
+```
+
+This explicit command **spends one banked reset immediately**, without an additional
+prompt. It requires an exact, independently enrolled managed account label;
+external/harness accounts cannot redeem resets. Omit `--credit-id` to let Codex
+choose a credit. `--json` reports `code`, `windowsReset`, and `requestId`.
+
+The request ID is printed to stderr before the request. If a timeout, HTTP error,
+or unexpected response leaves the result uncertain, check quota first. Retry only
+with **the same `--request-id`, account, and credit selection**; a fresh ID could
+spend another reset. There are no automatic retries. Outcomes are `reset`,
+`nothing_to_reset`, `no_credit`, and `already_redeemed`; only `reset` reports a
+newly applied reset.
+
+The command never refreshes or writes credentials. If its access token has expired,
+run `cq codex quota <label>` to use the existing managed refresh flow, or
+`cq codex reauth <label>`, before retrying. Watch, quota scans, and the web dashboard
+remain read-only with respect to resets.
+
+This uses the internal ChatGPT `/backend-api/wham/rate-limit-reset-credits/consume`
+endpoint, verified against [OpenAI's Codex implementation](https://github.com/openai/codex/blob/336b19ab26e0d4e36b16d8a21d668632cd800207/codex-rs/backend-client/src/client/rate_limit_resets.rs).
+It is not a stable public API; integration tests use fixtures, not live redemption.
 
 ### Watch controls
 
